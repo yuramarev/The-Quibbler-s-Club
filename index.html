@@ -9,7 +9,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevent horizontal scrollbar from canvas */
+        }
+        /* Animated Background Canvas */
+        #animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Place it behind all other content */
+        }
         .font-magic-title { font-family: 'Cinzel Decorative', cursive; }
         .font-magic-header { font-family: 'MedievalSharp', cursive; }
         ::-webkit-scrollbar { width: 12px; }
@@ -41,6 +53,7 @@
         .d20-face { position: absolute; width: 100px; height: 100px; border: 2px solid #FFD700; background: rgba(12, 28, 51, 0.8); color: #FFD700; font-size: 48px; font-weight: bold; display: flex; justify-content: center; align-items: center; }
         .d20-face.success { background: rgba(42, 98, 61, 0.8); border-color: #34D399; }
         .d20-face.failure { background: rgba(174, 0, 1, 0.8); border-color: #F87171; }
+        .d20-face.crit-fail { background: rgba(100, 0, 100, 0.9); border-color: #f0f; box-shadow: 0 0 15px #f0f; }
         @keyframes roll-dice {
             0% { transform: rotateX(0deg) rotateY(0deg); }
             100% { transform: rotateX(1080deg) rotateY(1080deg); }
@@ -242,9 +255,29 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #AE0001;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border: 1px solid white;
+        }
     </style>
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
+
+    <!-- Animated Background -->
+    <canvas id="animated-bg"></canvas>
 
     <!-- Authentication Container -->
     <div id="auth-container" class="min-h-screen flex items-center justify-center">
@@ -291,10 +324,18 @@
         
         <!-- Header -->
         <header class="bg-[#1A2B3C] p-4 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#FFD700]">
-            <div class="flex items-center mb-4 md:mb-0">
-                <span class="text-5xl mr-4">🏰</span>
+            <div class="flex items-center gap-4 mb-4 md:mb-0">
+                <!-- Logo Uploader -->
+                <div class="relative group cursor-pointer">
+                    <img id="school-logo" src="https://placehold.co/80x80/0C1C33/FFD700?text=LOGO" alt="School Logo" class="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-[#FFD700] object-cover transition-opacity group-hover:opacity-70">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-white text-xs md:text-sm font-bold">Change</span>
+                    </div>
+                </div>
+                <input type="file" id="logo-upload" class="hidden" accept="image/*">
+
                 <div>
-                    <h1 class="text-3xl font-magic-title text-[#FFD700]">Hogwarts House Cup Tracker</h1>
+                    <h1 class="text-2xl md:text-3xl font-magic-title text-[#FFD700]">Hogwarts House Cup Tracker</h1>
                     <p id="app-version" class="text-sm text-[#C0C0C0]"></p>
                 </div>
             </div>
@@ -306,7 +347,7 @@
                 <button id="library-btn" class="btn btn-gold">📚 Library</button>
                 <button id="magic-shop-btn" class="btn btn-gold">🛍️ Magic Shop</button>
                 <button id="dueling-club-btn" class="btn btn-gold">⚔️ Dueling Club</button>
-                <button id="cast-spell-btn" class="btn btn-gold">🔮 Cast Spell</button>
+                <button id="cast-spell-btn" class="btn btn-gold" disabled>🔮 Cast Spell</button>
                 <button id="logout-btn" class="btn btn-destructive">Logout</button>
             </div>
         </header>
@@ -328,6 +369,10 @@
                     <div class="grid grid-cols-2 gap-4">
                         <button id="award-points-btn" class="btn btn-gold col-span-2">🏆 Award/Deduct Points</button>
                         <button id="award-achievement-btn" class="btn btn-gold col-span-2">🌟 Grant Achievement</button>
+                        <div class="relative col-span-2">
+                            <button id="potion-requests-btn" class="btn btn-gold w-full">🧪 Potion Requests</button>
+                            <span id="potion-requests-badge" class="notification-badge hidden">0</span>
+                        </div>
                         <button id="assign-houses-btn" class="btn btn-gold col-span-2">🎩 Sort Students</button>
                         <button id="edit-students-btn" class="btn btn-gold col-span-2">➕ Edit Students</button>
                         <button id="link-accounts-btn" class="btn btn-gold col-span-2">🔗 Link Accounts</button>
@@ -402,6 +447,70 @@
         </div>
     </div>
 
+<script>
+// =================================================================================
+// ANIMATED BACKGROUND SCRIPT
+// =================================================================================
+const canvas = document.getElementById('animated-bg');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+class Particle {
+    constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 1;
+        this.speedX = Math.random() * 1 - 0.5;
+        this.speedY = Math.random() * 1 - 0.5;
+        this.opacity = Math.random() * 0.5 + 0.2;
+    }
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+
+        if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+        if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+    }
+    draw() {
+        ctx.fillStyle = `rgba(255, 215, 0, ${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function initParticles() {
+    particles = [];
+    const numberOfParticles = (canvas.width * canvas.height) / 9000;
+    for (let i = 0; i < numberOfParticles; i++) {
+        particles.push(new Particle());
+    }
+}
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+    }
+    requestAnimationFrame(animateParticles);
+}
+
+window.addEventListener('resize', () => {
+    resizeCanvas();
+    initParticles();
+});
+
+// Initial setup
+resizeCanvas();
+initParticles();
+animateParticles();
+</script>
 
 <script type="module">
 // =================================================================================
@@ -409,7 +518,7 @@
 // =================================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, getDoc, collection, getDocs, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, getDoc, collection, getDocs, updateDoc, deleteField, addDoc, query, where, orderBy, Timestamp, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -437,6 +546,7 @@ const showLoginLink = document.getElementById('show-login');
 const authError = document.getElementById('auth-error');
 const logoutBtn = document.getElementById('logout-btn');
 const userDisplay = document.getElementById('user-display');
+const castSpellBtn = document.getElementById('cast-spell-btn');
 
 // Switch between login and registration forms
 showRegisterLink.addEventListener('click', (e) => {
@@ -503,18 +613,18 @@ onAuthStateChanged(auth, (user) => {
         authContainer.style.display = 'flex';
         appContainer.style.display = 'none';
         userDisplay.textContent = '';
-        if (App.unsubscribe) {
-            App.unsubscribe(); // Stop listening to DB changes on logout
-            App.userId = null;
-            App.currentPlayerName = null;
-        }
+        if (App.unsubscribeMain) App.unsubscribeMain();
+        if (App.unsubscribeSpells) App.unsubscribeSpells();
+        if (App.unsubscribeRequests) App.unsubscribeRequests();
+        App.userId = null;
+        App.currentPlayerName = null;
     }
 });
 
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "17.2 Reading Mode Style", // Updated version
+    VERSION: "24.2 Potion Request Fix", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -537,7 +647,7 @@ const App = {
         "Wiggenweld Potion": { cost: 50, icon: "🧪", desc: "A healing potion that restores 50 HP.", effect: { type: 'heal', amount: 50 } },
         "Focus Draught": { cost: 40, icon: "💧", desc: "A magical draught that restores 40 MP.", effect: { type: 'mp_restore', amount: 40 } },
         "Shielding Brew": { cost: 75, icon: "🛡️", desc: "Creates a temporary magical shield that absorbs 30 damage.", effect: { type: 'add_shield', strength: 30, duration: 2, name: 'Shielding Brew' } },
-        "Felix Felicis (Dose)": { cost: 200, icon: "✨", desc: "Liquid luck! Guarantees your next spell roll is a success (d20 = 20). Single use.", effect: { type: 'guaranteed_hit' } }
+        "Felix Felicis (Dose)": { cost: 200, icon: "✨", desc: "Guarantees your next spell roll is a success (d20 = 20). Single use.", effect: { type: 'guaranteed_hit' } }
     },
     SPELLS: [
         "Expelliarmus", "Stupefy", "Protego", "Insendio", "Diffindo", "Petrificus Totalus",
@@ -569,6 +679,7 @@ const App = {
         spell_cast_ui: [523, 587, 659, 698, 784], duel_start: [200, 300, 400, 500],
         duel_hit: [600, 400], duel_miss: [300, 200], duel_block: [400, 400], shield_break: [300, 250, 200],
         heal_sound: [587, 698, 784], potion_use: [400, 500, 600], dice_roll: [200, 250, 300, 350, 400, 450, 500],
+        crit_fail_sound: [400, 300, 200, 100],
         open_book: [261, 329, 392], turn_page: [392, 440], add_word: [659, 784, 880]
     },
     
@@ -581,7 +692,11 @@ const App = {
     userId: null,
     isAdmin: false,
     currentPlayerName: null, 
-    unsubscribe: null,
+    unsubscribeMain: null,
+    unsubscribeSpells: null,
+    unsubscribeRequests: null,
+    appStartTime: null,
+    logoUrl: "https://placehold.co/80x80/0C1C33/FFD700?text=LOGO",
 
     // ==== INITIALIZATION ====
     init(userId, db) {
@@ -592,12 +707,14 @@ const App = {
         this.db = db;
         this.dbRef = doc(db, "hogwarts-tracker", "main-state");
         this.isAdmin = this.userId === this.ADMIN_UID;
+        this.appStartTime = Timestamp.now();
         
         document.getElementById('app-version').textContent = `v${this.VERSION}`;
         
-        this.setupRealtimeListener();
+        this.setupRealtimeListeners();
         this.bindEventListeners();
         this.updateAdminControls();
+        this.setupLogoUploader();
         
         this.playSound([261, 329, 392], 0.1, "sine");
         DuelingClub.app = this;
@@ -612,18 +729,27 @@ const App = {
         
         document.getElementById('award-points-btn').addEventListener('click', () => this.openAwardPointsDialog());
         document.getElementById('award-achievement-btn').addEventListener('click', () => this.openAwardAchievementDialog());
+        document.getElementById('potion-requests-btn').addEventListener('click', () => this.openPurchaseRequestsDialog());
         document.getElementById('assign-houses-btn').addEventListener('click', () => this.assignHousesCeremony());
         document.getElementById('random-event-btn').addEventListener('click', () => this.triggerRandomEvent());
         document.getElementById('reset-points-btn').addEventListener('click', () => this.confirmResetPoints());
         document.getElementById('edit-students-btn').addEventListener('click', () => this.openEditStudentsDialog());
         document.getElementById('link-accounts-btn').addEventListener('click', () => this.openLinkAccountsDialog());
         document.getElementById('history-log-btn').addEventListener('click', () => this.showHistoryLog());
-        document.getElementById('cast-spell-btn').addEventListener('click', () => this.castVisualSpell());
+        castSpellBtn.addEventListener('click', () => this.broadcastSpellEffect());
         document.getElementById('dueling-club-btn').addEventListener('click', () => DuelingClub.openDuelSetup());
         document.getElementById('magic-shop-btn').addEventListener('click', () => Shop.open());
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
         
+        // Event delegation for student list actions
+        document.getElementById('student-list-container').addEventListener('click', (e) => {
+            if (e.target.matches('.profile-btn')) {
+                const studentName = e.target.dataset.studentName;
+                this.openStudentProfile(studentName);
+            }
+        });
+
         // Global listener for Escape key
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
@@ -649,10 +775,13 @@ const App = {
     },
     
     // ==== REAL-TIME DATABASE ====
-    setupRealtimeListener() {
-        if (this.unsubscribe) this.unsubscribe();
+    setupRealtimeListeners() {
+        if (this.unsubscribeMain) this.unsubscribeMain();
+        if (this.unsubscribeSpells) this.unsubscribeSpells();
+        if (this.unsubscribeRequests) this.unsubscribeRequests();
 
-        this.unsubscribe = onSnapshot(this.dbRef, (docSnap) => {
+        // Listener for main game state
+        this.unsubscribeMain = onSnapshot(this.dbRef, (docSnap) => {
             if (docSnap.exists()) {
                 console.log("Received real-time update from Firestore.");
                 const data = docSnap.data();
@@ -660,6 +789,8 @@ const App = {
                 this.studentData = data.studentData;
                 this.currentAssignments = data.currentAssignments;
                 this.history = data.history;
+                this.logoUrl = data.logoUrl || "https://placehold.co/80x80/0C1C33/FFD700?text=LOGO";
+                document.getElementById('school-logo').src = this.logoUrl;
                 this.identifyCurrentUser(); 
                 this.updateDisplay();
             } else {
@@ -674,6 +805,39 @@ const App = {
             console.error("Firestore listener error:", error);
             this.showNotification("Error connecting to the database.", "error");
         });
+
+        // Listener for spell effects
+        const spellsRef = collection(db, "spell-effects");
+        const qSpells = query(spellsRef, where("timestamp", ">", this.appStartTime), orderBy("timestamp", "desc"));
+
+        this.unsubscribeSpells = onSnapshot(qSpells, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const spellData = change.doc.data();
+                    console.log("New spell detected:", spellData.name);
+                    this.createVisualSpell(spellData.name, spellData.color);
+                    this.showNotification(`${spellData.caster} casts ${spellData.name}!`, 'info');
+                }
+            });
+        }, (error) => {
+            console.error("Spell listener error:", error);
+        });
+        
+        // Listener for purchase requests (admin only)
+        if (this.isAdmin) {
+            const requestsRef = collection(db, "purchase-requests");
+            const qRequests = query(requestsRef, where("status", "==", "pending"));
+            this.unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
+                const count = snapshot.size;
+                const badge = document.getElementById('potion-requests-badge');
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            });
+        }
     },
     
     async saveProgress() {
@@ -688,7 +852,8 @@ const App = {
             studentData: this.studentData,
             currentAssignments: this.currentAssignments,
             history: this.history,
-            lastUpdated: serverTimestamp()
+            lastUpdated: serverTimestamp(),
+            logoUrl: this.logoUrl
         };
         
         try {
@@ -708,6 +873,7 @@ const App = {
         this.studentData = {};
         this.currentAssignments = {};
         this.history = [];
+        this.logoUrl = "https://placehold.co/80x80/0C1C33/FFD700?text=LOGO";
         this.DEFAULT_STUDENTS.forEach(name => {
             this.studentData[name] = { points: 0, achievements: [], hp: this.DEFAULT_HP, mp: this.DEFAULT_MP, inventory: [], authUid: null };
         });
@@ -778,7 +944,7 @@ const App = {
                 <div style="color: ${house.color};">${house.animal} ${houseName}</div>
                 <div class="text-right font-bold text-[#FFD700]">${student.points}</div>
                 <div class="text-center">
-                    <button class="btn text-sm bg-[#3D5568] text-white" onclick="App.openStudentProfile('${studentName}')">Profile</button>
+                    <button class="btn text-sm bg-[#3D5568] text-white profile-btn" data-student-name="${studentName}">Profile</button>
                 </div>
             `;
             container.appendChild(studentRow);
@@ -791,8 +957,15 @@ const App = {
             let displayText = user.email;
             if (this.currentPlayerName) {
                 displayText += ` (as ${this.currentPlayerName})`;
+                castSpellBtn.disabled = false;
+                castSpellBtn.title = "Cast a spell for everyone to see!";
             } else if (!this.isAdmin) {
                 displayText += ` (Spectator)`;
+                castSpellBtn.disabled = true;
+                castSpellBtn.title = "Link your account to a student to cast spells.";
+            } else {
+                 castSpellBtn.disabled = false;
+                 castSpellBtn.title = "Admins can cast shared spells.";
             }
             userDisplay.textContent = displayText;
         }
@@ -952,7 +1125,7 @@ const App = {
             return Object.keys(this.studentData).sort().map(name => `
                 <div class="flex items-center gap-2 mb-2">
                     <input type="text" value="${name}" data-original-name="${name}" class="student-name-entry flex-grow bg-[#0C1C33] p-2 rounded border border-[#3D5568]">
-                    <button class="btn-destructive text-sm p-2" onclick="App.removeStudent('${name}')">🗑️</button>
+                    <button class="btn-destructive text-sm p-2 remove-student-btn" data-student-name="${name}">🗑️</button>
                 </div>
             `).join('');
         };
@@ -996,18 +1169,28 @@ const App = {
             this.saveProgress();
             this.closeModal();
         }, 'Save & Close');
+        
+        const modalContent = document.getElementById('modal-content');
 
-        document.getElementById('add-student-btn').addEventListener('click', () => {
+        // Add student logic
+        modalContent.querySelector('#add-student-btn').addEventListener('click', () => {
             const newNameInput = document.getElementById('new-student-name');
             const newName = newNameInput.value.trim();
             if (newName && !this.studentData[newName]) {
                 this.studentData[newName] = { points: 0, achievements: [], hp: this.DEFAULT_HP, mp: this.DEFAULT_MP, inventory: [], authUid: null };
                 this.addHistory(`Added new student: ${newName}`, 'Manual addition');
                 this.saveProgress();
-                document.getElementById('edit-student-list-container').innerHTML = renderStudentList();
-                newNameInput.value = '';
+                this.closeModal();
+                this.openEditStudentsDialog();
             } else if (this.studentData[newName]) {
                 this.showNotification(`Student "${newName}" already exists!`, 'error');
+            }
+        });
+
+        // Remove student logic using event delegation
+        modalContent.querySelector('#edit-student-list-container').addEventListener('click', (e) => {
+            if (e.target.matches('.remove-student-btn')) {
+                this.removeStudent(e.target.dataset.studentName);
             }
         });
     },
@@ -1020,8 +1203,8 @@ const App = {
             delete this.currentAssignments[name];
             this.addHistory(`Removed student: ${name}`, 'Manual removal');
             this.saveProgress();
-            this.closeModal();
-            this.openEditStudentsDialog(); 
+            this.closeModal(); // Closes the confirmation modal
+            this.openEditStudentsDialog(); // Re-opens the edit modal to refresh
         }, 'Delete');
     },
 
@@ -1081,9 +1264,19 @@ const App = {
         const inventoryHTML = student.inventory && student.inventory.length > 0 ?
             student.inventory.map(itemName => {
                 const item = this.SHOP_ITEMS[itemName];
-                return `<div class="flex items-center gap-2"><span class="text-xl">${item.icon}</span> <span>${itemName}</span></div>`;
+                const removeBtn = this.isAdmin ? `<button class="btn-destructive text-xs p-1" onclick="App.adminRemoveItem('${studentName}', '${itemName}')">X</button>` : '';
+                return `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xl">${item.icon}</span> <span>${itemName}</span></div> ${removeBtn}</div>`;
             }).join('') : '<p class="text-gray-400">No items.</p>';
         
+        const adminInventoryControls = this.isAdmin ? `
+            <div class="flex gap-2 mt-2">
+                <select id="admin-add-item-select" class="w-full bg-[#2A3B4D] rounded p-1 border border-[#3D5568] text-sm">
+                    ${Object.keys(this.SHOP_ITEMS).map(name => `<option value="${name}">${name}</option>`).join('')}
+                </select>
+                <button class="btn btn-gold text-sm" onclick="App.adminAddItem('${studentName}')">Add</button>
+            </div>
+        ` : '';
+
         const studentHistory = this.history.filter(entry => entry.action.includes(studentName));
         const historyHTML = studentHistory.length > 0 ? studentHistory.slice().reverse().map(entry => `
             <div class="p-2 border-b border-gray-700 text-sm">
@@ -1093,6 +1286,7 @@ const App = {
         `).join('') : '<p class="text-gray-400">No points history.</p>';
 
         const content = `
+            <button id="close-profile-btn" class="absolute top-4 right-4 text-2xl text-gray-400 hover:text-white">&times;</button>
             <div class="flex items-center gap-4 mb-4">
                 <div class="text-6xl">${house.animal}</div>
                 <div>
@@ -1109,6 +1303,7 @@ const App = {
             <hr class="my-4 border-gray-600">
             <h5 class="font-bold mb-2">🎒 Inventory</h5>
             <div class="space-y-1 mb-2">${inventoryHTML}</div>
+            ${adminInventoryControls}
             <hr class="my-4 border-gray-600">
             <h5 class="font-bold mb-2">🌟 Achievements</h5>
             <div class="space-y-1 mb-2">${achievementsHTML}</div>
@@ -1116,7 +1311,13 @@ const App = {
             <h5 class="font-bold mb-2">📜 Points History</h5>
             <div class="space-y-1 max-h-32 overflow-y-auto">${historyHTML}</div>
         `;
-        this.openModal(`Student Profile: ${studentName}`, content);
+        this.openModal(`Student Profile: ${studentName}`, content, null);
+        
+        // Add event listener for close button
+        const closeBtn = document.getElementById('close-profile-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal());
+        }
     },
 
     showHistoryLog() {
@@ -1206,8 +1407,30 @@ const App = {
         }, 'Reset');
     },
 
-    castVisualSpell() {
+    async broadcastSpellEffect() {
+        const casterName = this.isAdmin ? "The Headmaster" : this.currentPlayerName;
+        if (!casterName) {
+            this.showNotification("Only linked students can cast shared spells.", "error");
+            return;
+        }
         const spellName = this.SPELLS[Math.floor(Math.random() * this.SPELLS.length)];
+        const houseName = this.currentAssignments[this.currentPlayerName] || 'Gryffindor';
+        const houseColor = this.HOUSES[houseName].color;
+
+        try {
+            await addDoc(collection(db, "spell-effects"), {
+                name: spellName,
+                color: houseColor,
+                caster: casterName,
+                timestamp: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error broadcasting spell:", error);
+            this.showNotification("Could not cast the spell.", "error");
+        }
+    },
+
+    createVisualSpell(spellName, color) {
         const container = document.getElementById('spell-effect-container');
         const spellEl = document.createElement('div');
         spellEl.className = 'spell-effect';
@@ -1216,7 +1439,7 @@ const App = {
         const startX = Math.random() * window.innerWidth;
         spellEl.style.left = `${startX}px`;
         spellEl.style.bottom = '0px';
-        spellEl.style.color = Object.values(this.HOUSES)[Math.floor(Math.random() * 4)].color;
+        spellEl.style.color = color || '#FFD700';
 
         container.appendChild(spellEl);
         this.playSound(this.SOUNDS.spell_cast_ui, 0.1);
@@ -1281,6 +1504,177 @@ const App = {
         setTimeout(() => {
             notif.remove();
         }, 3000);
+    },
+
+    // ==== LOGO FUNCTIONALITY ====
+    setupLogoUploader() {
+        const logoImg = document.getElementById('school-logo');
+        const logoUploadInput = document.getElementById('logo-upload');
+        const logoContainer = logoImg.parentElement;
+
+        if (this.isAdmin) {
+            logoContainer.addEventListener('click', () => {
+                logoUploadInput.click();
+            });
+
+            logoUploadInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const imageDataUrl = e.target.result;
+                        this.logoUrl = imageDataUrl;
+                        this.saveProgress();
+                        this.showNotification('Logo updated successfully!', 'success');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        } else {
+            // Remove hover effect for non-admin
+            logoContainer.classList.remove('group');
+            const hoverDiv = logoContainer.querySelector('div');
+            if (hoverDiv) hoverDiv.remove();
+            logoContainer.style.cursor = 'default';
+        }
+    },
+
+    // ==== NEW POTION & INVENTORY LOGIC ====
+    async requestPurchase(studentName, itemName) {
+        const item = this.SHOP_ITEMS[itemName];
+        const student = this.studentData[studentName];
+        if (!item || !student) return;
+
+        if (student.points < item.cost) {
+            this.showNotification("You do not have enough points for this item.", "error");
+            return;
+        }
+
+        try {
+            await addDoc(collection(db, "purchase-requests"), {
+                studentName,
+                itemName,
+                itemCost: item.cost,
+                status: "pending",
+                timestamp: serverTimestamp()
+            });
+            this.showNotification("Purchase request sent to the admin for approval.", "success");
+            this.closeModal();
+        } catch (error) {
+            console.error("Error sending purchase request:", error);
+            this.showNotification("Could not send purchase request.", "error");
+        }
+    },
+
+    async openPurchaseRequestsDialog() {
+        try {
+            const requestsRef = collection(db, "purchase-requests");
+            const q = query(requestsRef, where("status", "==", "pending"), orderBy("timestamp", "asc"));
+            const snapshot = await getDocs(q);
+
+            let requestsHTML = '';
+            if (snapshot.empty) {
+                requestsHTML = '<p class="text-center text-gray-400">No pending requests.</p>';
+            } else {
+                snapshot.forEach(doc => {
+                    const req = doc.data();
+                    const item = this.SHOP_ITEMS[req.itemName];
+                    if (!item) return; // Skip if item is no longer sold
+                    requestsHTML += `
+                        <div class="p-3 bg-[#0C1C33] rounded-lg border border-[#3D5568] flex justify-between items-center">
+                            <div>
+                                <p><strong>${req.studentName}</strong> requests <strong>${item.icon} ${req.itemName}</strong></p>
+                                <p class="text-sm text-gray-400">Cost: ${req.itemCost} points</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn bg-green-600 text-white text-sm" onclick="App.handlePurchaseRequest('${doc.id}', true)">Approve</button>
+                                <button class="btn btn-destructive text-sm" onclick="App.handlePurchaseRequest('${doc.id}', false)">Deny</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const content = `<div class="space-y-3 max-h-96 overflow-y-auto">${requestsHTML}</div>`;
+            this.openModal('Potion Purchase Requests', content);
+        } catch (error) {
+            console.error("Error opening purchase requests:", error);
+            this.showNotification("Could not load purchase requests. Check console for details.", "error");
+            const content = `<p class="text-red-400">Failed to load requests. This is likely due to a missing Firestore index. Please check the browser console (F12) for a detailed error message and a link to create the necessary index.</p>`;
+            this.openModal('Error Loading Requests', content);
+        }
+    },
+
+    async handlePurchaseRequest(requestId, isApproved) {
+        if (!this.isAdmin) return;
+
+        const requestRef = doc(db, "purchase-requests", requestId);
+        const requestSnap = await getDoc(requestRef);
+        if (!requestSnap.exists()) {
+            this.showNotification("Request not found.", "error");
+            return;
+        }
+
+        const requestData = requestSnap.data();
+        const { studentName, itemName, itemCost } = requestData;
+        
+        const batch = writeBatch(db);
+        const mainStateRef = this.dbRef;
+
+        if (isApproved) {
+            const latestDoc = await getDoc(mainStateRef);
+            const latestStudentData = latestDoc.data().studentData;
+            const student = latestStudentData[studentName];
+            
+            if (!student) {
+                this.showNotification(`Student ${studentName} not found.`, "error");
+                batch.update(requestRef, { status: "denied", reason: "Student not found" });
+            } else if (student.points < itemCost) {
+                this.showNotification(`${studentName} no longer has enough points.`, "error");
+                batch.update(requestRef, { status: "denied", reason: "Insufficient points" });
+            } else {
+                student.points -= itemCost;
+                if (!student.inventory) student.inventory = [];
+                student.inventory.push(itemName);
+                
+                batch.update(mainStateRef, { [`studentData.${studentName}`]: student });
+                
+                batch.update(requestRef, { status: "approved" });
+                this.addHistory(`Approved ${itemName} for ${studentName}`, `Cost: ${itemCost} points.`);
+                this.showNotification("Purchase approved!", "success");
+            }
+        } else {
+            batch.update(requestRef, { status: "denied", reason: "Admin denied" });
+            this.showNotification("Purchase denied.", "info");
+        }
+
+        await batch.commit();
+        this.openPurchaseRequestsDialog(); // Refresh the dialog
+    },
+    
+    async adminAddItem(studentName) {
+        const itemName = document.getElementById('admin-add-item-select').value;
+        if (!itemName) return;
+
+        const student = this.studentData[studentName];
+        if (!student.inventory) student.inventory = [];
+        student.inventory.push(itemName);
+
+        await updateDoc(this.dbRef, { [`studentData.${studentName}`]: student });
+        this.showNotification(`Added ${itemName} to ${studentName}'s inventory.`, 'success');
+        this.openStudentProfile(studentName); // Refresh profile
+    },
+
+    async adminRemoveItem(studentName, itemName) {
+        const student = this.studentData[studentName];
+        const itemIndex = student.inventory.indexOf(itemName);
+        if (itemIndex > -1) {
+            student.inventory.splice(itemIndex, 1);
+        }
+
+        await updateDoc(this.dbRef, { [`studentData.${studentName}`]: student });
+        this.showNotification(`Removed ${itemName} from ${studentName}'s inventory.`, 'success');
+        this.openStudentProfile(studentName); // Refresh profile
     }
 };
 
@@ -1665,21 +2059,21 @@ const Library = {
             const chapterRef = doc(this.app.db, 'books', bookId, 'chapters', chapterId);
             const docSnap = await getDoc(chapterRef);
 
-            if (docSnap.exists()) {
-                const chapterData = docSnap.data();
-                const formattedContent = this.formatChapterContent(chapterData);
-                
-                contentContainer.innerHTML = `
-                    <h4 class="text-xl font-bold mb-4 text-center">${chapterData.title || chapterId}</h4>
-                    ${formattedContent}
-                `;
-                
-                this.applyReaderSettings();
-                this.addWordClickListener(contentContainer);
+        if (docSnap.exists()) {
+            const chapterData = docSnap.data();
+            const formattedContent = this.formatChapterContent(chapterData);
+            
+            contentContainer.innerHTML = `
+                <h4 class="text-xl font-bold mb-4 text-center">${chapterData.title || chapterId}</h4>
+                ${formattedContent}
+            `;
+            
+            this.applyReaderSettings();
+            this.addWordClickListener(contentContainer);
 
-            } else {
-                contentContainer.innerHTML = `<p class="text-center py-8">Chapter content not found.</p>`;
-            }
+        } else {
+            contentContainer.innerHTML = `<p class="text-center py-8">Chapter content not found.</p>`;
+        }
         } catch (error) {
             console.error(`Error loading chapter ${chapterId}:`, error);
             contentContainer.innerHTML = `<p class="text-center py-8">Error loading chapter content.</p>`;
@@ -1869,7 +2263,10 @@ const Shop = {
                 </div>
                 <div class="text-right">
                     <p class="text-lg font-bold text-[#FFD700]">${item.cost} points</p>
-                    <button class="btn btn-gold text-sm mt-1" onclick="Shop.buyItem('${studentName}', '${name}')" ${student.points < item.cost ? 'disabled' : ''}>Buy</button>
+                    <button class="btn btn-gold text-sm mt-1" onclick="Shop.buyItem('${studentName}', '${name}')" 
+                        ${student.points < item.cost ? 'disabled' : ''}>
+                        Buy
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -1883,34 +2280,7 @@ const Shop = {
     },
 
     buyItem(studentName, itemName) {
-        if (!this.app.isAdmin) {
-            this.app.showNotification("Only the administrator can approve purchases.", "error");
-            return;
-        }
-
-        const student = this.app.studentData[studentName];
-        const item = this.app.SHOP_ITEMS[itemName];
-
-        if (student.points >= item.cost) {
-            student.points -= item.cost;
-            if (!student.inventory) {
-                student.inventory = [];
-            }
-            student.inventory.push(itemName);
-
-            const houseName = this.app.currentAssignments[studentName];
-            if (houseName) {
-                this.app.HOUSES[houseName].points -= item.cost;
-            }
-            
-            this.app.addHistory(`${studentName} purchased ${itemName}`, `Cost: ${item.cost} points`);
-            this.app.saveProgress();
-            this.app.playSound(this.app.SOUNDS.points);
-            this.app.showNotification(`${itemName} purchased!`, 'success');
-            this.open(); 
-        } else {
-            this.app.showNotification("Not enough points!", "error");
-        }
+        this.app.requestPurchase(studentName, itemName);
     }
 };
 window.Shop = Shop;
@@ -1926,10 +2296,67 @@ const DuelingClub = {
     gameOver: false,
     isProcessing: false,
     isPaused: false,
+    isFastMode: false,
     turnTimeout: null,
     currentCaster: null,
     currentTarget: null,
-    WORDS_TO_HIGHLIGHT: ['damage', 'shield', 'heals', 'restores', 'victorious', 'fails', 'attempts', 'defensive', 'offensive', 'unforgivable', 'success', 'failure'],
+    WORDS_TO_HIGHLIGHT: ['damage', 'shield', 'heals', 'restores', 'victorious', 'fails', 'attempts', 'defensive', 'offensive', 'success', 'failure', 'blocks', 'broken', 'fades', 'backfires', 'potion'],
+
+    DESCRIPTIONS: {
+        cast: [
+            "{caster} raises their wand and shouts, '{spellName}!'",
+            "With a flick of their wrist, {caster} casts {spellName}!",
+            "{caster} focuses their energy, unleashing {spellName} at {target}."
+        ],
+        hit: [
+            "The spell strikes {target}, who staggers back, taking {damage} damage!",
+            "A direct hit! {target} is blasted by the spell for {damage} damage.",
+            "The curse finds its mark, inflicting {damage} damage upon {target}."
+        ],
+        miss: [
+            "{caster}'s spell goes wide, missing {target} completely!",
+            "{target} deftly dodges the incoming {spellName}!",
+            "The spell fizzles out, failing to reach its target."
+        ],
+        crit_fail: [
+            "A catastrophic failure! The spell {backfires} and explodes in {caster}'s face!",
+            "The magic is unstable! {caster}'s own {spellName} turns against them!",
+            "Disaster! The wand backfires, hitting {caster} with their own spell!"
+        ],
+        shield_block: [
+            "{target}'s shield flares, absorbing {blocked} damage from the attack!",
+            "The {spellName} impacts harmlessly against {target}'s magical barrier, blocking {blocked} damage."
+        ],
+        shield_break: [
+            "The force of the spell is too much! {target}'s shield shatters!",
+            "With a loud crack, the defensive barrier around {target} is {broken}!"
+        ],
+        heal: [
+            "A warm glow surrounds {caster}, restoring {healedAmount} HP.",
+            "{caster} mends their wounds with magic, healing for {healedAmount} HP."
+        ],
+        potion_heal: [
+            "{caster} quickly drinks a potion, restoring {healedAmount} HP.",
+            "The Wiggenweld Potion soothes {caster}'s injuries, healing for {healedAmount} HP."
+        ],
+        potion_mp: [
+            "{caster} consumes a Focus Draught, restoring {restoredMp} MP.",
+            "Energy flows back into {caster} as they drink the draught, restoring {restoredMp} MP."
+        ]
+    },
+
+    getDuelLogEntry(type, context) {
+        const templates = this.DESCRIPTIONS[type];
+        if (!templates) return "An unknown action occurred.";
+        
+        let entry = templates[Math.floor(Math.random() * templates.length)];
+        
+        for (const key in context) {
+            entry = entry.replace(new RegExp(`\\{${key}\\}`, 'g'), context[key]);
+        }
+
+        return entry;
+    },
 
     openDuelSetup() {
         if (Object.keys(this.app.studentData).length < 2) {
@@ -1942,9 +2369,9 @@ const DuelingClub = {
             <button id="close-duel-setup" class="absolute top-2 right-4 text-3xl text-gray-400 hover:text-white transition-colors">&times;</button>
             <div class="text-center mb-4">
                  <h3 class="font-magic-header text-3xl text-[#FFD700]">The Dueling Club</h3>
-                 <p>Choose two students to begin the duel.</p>
+                 <p>Choose two students and a duel mode.</p>
             </div>
-            <div class="flex justify-around items-center">
+            <div class="flex justify-around items-center mb-6">
                 <select id="duelist1-select" class="bg-[#2A3B4D] rounded p-2 border border-[#3D5568]">
                     ${studentOptions.map(s => `<option value="${s}">${s}</option>`).join('')}
                 </select>
@@ -1953,8 +2380,9 @@ const DuelingClub = {
                     ${studentOptions.map((s, i) => `<option value="${s}" ${i === 1 ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
             </div>
-            <div class="text-center mt-6">
+            <div class="flex justify-center gap-4 mt-6">
                  <button id="start-duel-btn" class="btn btn-gold text-lg">📜 Begin Duel!</button>
+                 <button id="start-fast-duel-btn" class="btn bg-blue-600 text-white text-lg">⚡ Fast Duel</button>
             </div>
         `;
         
@@ -1963,45 +2391,18 @@ const DuelingClub = {
         modalContent.innerHTML = content;
         
         modal.classList.add('show');
-        modal.querySelector('#start-duel-btn').addEventListener('click', () => this.startDuel());
+        modal.querySelector('#start-duel-btn').addEventListener('click', () => this.startDuel(false));
+        modal.querySelector('#start-fast-duel-btn').addEventListener('click', () => this.startDuel(true));
         modal.querySelector('#close-duel-setup').addEventListener('click', () => this.closeDuelModal());
     },
 
     closeDuelModal() {
-        if (this.duelist1 && !this.gameOver) {
-            const modalContent = document.getElementById('duel-modal-content');
-            modalContent.innerHTML = `
-                <div class="text-center p-8">
-                    <h3 class="font-magic-header text-2xl text-yellow-400 mb-4">Forfeit Duel?</h3>
-                    <p class="mb-6">The duel is not over. Are you sure you want to end it?</p>
-                    <div class="flex justify-center gap-4">
-                        <button id="confirm-end-duel" class="btn btn-destructive">Yes, end duel</button>
-                        <button id="cancel-end-duel" class="btn btn-gold">No, continue</button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('confirm-end-duel').onclick = () => {
-                clearTimeout(this.turnTimeout);
-                this.gameOver = true;
-                this.isProcessing = false;
-                document.getElementById('duel-modal').classList.remove('show');
-                this.app.showNotification('The duel was forfeited.', 'success');
-                this.duelist1 = null; this.duelist2 = null;
-            };
-
-            document.getElementById('cancel-end-duel').onclick = () => {
-                 this.renderDuelArena();
-                 this.log('The duel continues...', 'yellow');
-            };
-        } else {
-            clearTimeout(this.turnTimeout);
-            document.getElementById('duel-modal').classList.remove('show');
-            this.duelist1 = null; this.duelist2 = null;
-        }
+        clearTimeout(this.turnTimeout);
+        document.getElementById('duel-modal').classList.remove('show');
+        this.duelist1 = null; this.duelist2 = null;
     },
 
-    startDuel() {
+    startDuel(isFastMode = false) {
         const d1Name = document.getElementById('duelist1-select').value;
         const d2Name = document.getElementById('duelist2-select').value;
 
@@ -2010,7 +2411,7 @@ const DuelingClub = {
             return;
         }
         
-        this.app.playSound(this.app.SOUNDS.duel_start);
+        this.duelPlaySound(this.app.SOUNDS.duel_start);
 
         this.duelist1 = this.createDuelistState(d1Name);
         this.duelist2 = this.createDuelistState(d2Name);
@@ -2018,30 +2419,46 @@ const DuelingClub = {
         this.gameOver = false;
         this.isProcessing = false;
         this.isPaused = false;
+        this.isFastMode = isFastMode;
+        this.currentCaster = this.duelist1;
+        this.currentTarget = this.duelist2;
         
         this.renderDuelArena();
         this.log(`A duel begins between ${d1Name} and ${d2Name}!`);
         
-        this.turnTimeout = setTimeout(() => this.processTurn(this.duelist1, this.duelist2), 1000);
+        if (this.isFastMode) {
+            this.continueFastDuel();
+        } else {
+            this.log(`It's ${this.currentCaster.name}'s turn.`, 'yellow');
+        }
     },
     
     createDuelistState(name) {
         const student = this.app.studentData[name];
+        // Deep copy of inventory to avoid modifying original data during duel
+        const inventoryCopy = student.inventory ? JSON.parse(JSON.stringify(student.inventory)) : [];
         return {
             name: name,
             house: this.app.currentAssignments[name] || 'Unsorted',
             hp: student.hp, maxHp: this.app.DEFAULT_HP,
             mp: student.mp, maxMp: this.app.DEFAULT_MP,
             shield: null, statusEffects: {},
-            inventory: [...(student.inventory || [])],
+            inventory: inventoryCopy,
             effects: {}
         };
     },
 
     renderDuelArena() {
+        let controlsHTML = '';
+        if (this.isFastMode) {
+            controlsHTML = `<button id="pause-resume-btn" class="btn btn-gold">Pause</button>`;
+        } else {
+            controlsHTML = `<button id="make-move-btn" class="btn btn-gold">Make a Move</button>`;
+        }
+
         const content = `
             <button id="force-close-duel" class="absolute top-2 right-4 text-3xl text-gray-400 hover:text-white transition-colors">&times;</button>
-            <div id="duel-arena" class="p-4 rounded-lg border-2 border-[#FFD700]">
+            <div id="duel-arena" class="p-4 rounded-lg">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div id="duelist1-panel" class="duelist-panel bg-[#0C1C33] p-4 rounded-lg border border-gray-600"></div>
                     <div class="bg-[#0C1C33] p-4 rounded-lg border border-gray-600 flex flex-col justify-center items-center">
@@ -2053,15 +2470,28 @@ const DuelingClub = {
                     <div id="duelist2-panel" class="duelist-panel bg-[#0C1C33] p-4 rounded-lg border border-gray-600"></div>
                 </div>
                 <div id="duel-controls" class="text-center mt-4 h-10">
-                    <button id="pause-resume-btn" class="btn btn-gold">Pause</button>
+                    ${controlsHTML}
                 </div>
             </div>
         `;
         const modalContent = document.getElementById('duel-modal-content');
         modalContent.innerHTML = content;
         modalContent.querySelector('#force-close-duel').addEventListener('click', () => this.closeDuelModal());
-        modalContent.querySelector('#pause-resume-btn').addEventListener('click', () => this.togglePause());
+        
+        if (this.isFastMode) {
+            modalContent.querySelector('#pause-resume-btn').addEventListener('click', () => this.togglePause());
+        } else {
+            modalContent.querySelector('#make-move-btn').addEventListener('click', () => this.makeMove());
+        }
+
         this.updateDuelUI();
+    },
+
+    makeMove() {
+        if (this.isProcessing || this.gameOver) return;
+        this.isProcessing = true;
+        this.updateDuelUI(); // This will disable the button
+        this.processTurn();
     },
 
     togglePause() {
@@ -2074,8 +2504,7 @@ const DuelingClub = {
         } else {
             btn.textContent = 'Pause';
             this.log('Duel resuming...', 'yellow');
-            this.isProcessing = false; 
-            this.processTurn(this.currentCaster, this.currentTarget);
+            this.continueFastDuel();
         }
     },
     
@@ -2087,6 +2516,11 @@ const DuelingClub = {
             const house = this.app.HOUSES[duelist.house] || {};
             const statusText = Object.keys(duelist.statusEffects).length > 0 ?
                 Object.keys(duelist.statusEffects).map(k => `${k}(${duelist.statusEffects[k].duration})`).join(', ') : 'Normal';
+
+            const inventoryText = duelist.inventory.map(itemName => {
+                const item = this.app.SHOP_ITEMS[itemName];
+                return `<span title="${item.desc}">${item.icon}</span>`;
+            }).join(' ');
 
             let panelHTML = `
                 <h4 class="font-bold text-lg" style="color:${house.color}">${house.animal} ${duelist.name}</h4>
@@ -2100,16 +2534,24 @@ const DuelingClub = {
                 </div>
                 <p class="text-sm">Status: <span class="text-yellow-400">${statusText}</span></p>
                 ${duelist.shield ? `<p class="text-sm text-cyan-400">Shield: ${duelist.shield.name} (${duelist.shield.strength})</p>` : ''}
+                <p class="text-sm mt-1">Inventory: ${inventoryText || 'Empty'}</p>
             `;
-            if (this.currentCaster === duelist && !this.isProcessing && !this.gameOver && duelist.inventory.length > 0) {
+            if (this.currentCaster === duelist && !this.isProcessing && !this.gameOver && !this.isFastMode && duelist.inventory.length > 0) {
                 panelHTML += `<div class="mt-2">
-                    <button class="btn btn-sm bg-green-600 text-white" onclick="DuelingClub.openItemMenu()">Use Item</button>
+                    <button class="btn text-sm bg-green-600 text-white" onclick="DuelingClub.openItemMenu()">Use Item</button>
                 </div>`;
             }
             panel.innerHTML = panelHTML;
         };
         renderPanel(this.duelist1, 'duelist1-panel');
         renderPanel(this.duelist2, 'duelist2-panel');
+
+        if (!this.isFastMode) {
+            const makeMoveBtn = document.getElementById('make-move-btn');
+            if (makeMoveBtn) {
+                makeMoveBtn.disabled = this.isProcessing || this.gameOver;
+            }
+        }
     },
     
     highlightWords(text) {
@@ -2131,11 +2573,18 @@ const DuelingClub = {
         logContainer.scrollTop = logContainer.scrollHeight;
     },
     
-    processTurn(caster, target) {
-        if (this.gameOver || this.isProcessing || this.isPaused) return;
+    continueFastDuel() {
+        if (this.gameOver || this.isPaused) return;
+        
         this.isProcessing = true;
-        this.currentCaster = caster;
-        this.currentTarget = target;
+        this.processTurn();
+    },
+
+    processTurn() {
+        if (this.gameOver) return;
+
+        const caster = this.currentCaster;
+        const target = this.currentTarget;
 
         document.querySelectorAll('.duelist-panel').forEach(p => p.classList.remove('active-turn'));
         document.getElementById(caster === this.duelist1 ? 'duelist1-panel' : 'duelist2-panel').classList.add('active-turn');
@@ -2150,92 +2599,115 @@ const DuelingClub = {
         
         this.updateDuelUI(); 
 
-        this.turnTimeout = setTimeout(() => {
-            if (!this.isProcessing) {
-                this.isProcessing = true; 
-            }
-            const itemMenu = document.getElementById('item-menu');
-            if (itemMenu) {
+        const executeAction = () => {
+            // In Fast Mode, AI considers using a potion
+            if (this.isFastMode && this.considerUsingPotion()) {
+                if (this.checkGameOver()) { this.isProcessing = false; return; }
+                this.endTurn();
                 return;
             }
 
             const spellName = this.chooseSpell(caster);
             const spell = this.app.SPELL_DETAILS[spellName];
             
-            if (caster.effects.guaranteed_hit) {
-                this.log(`${caster.name} uses Liquid Luck! The spell is a guaranteed hit!`, 'yellow');
-                delete caster.effects.guaranteed_hit;
-                this.executeSpell(caster, target, spellName);
-                if (this.checkGameOver()) { this.isProcessing = false; return; }
-                this.endTurn();
-                return;
-            }
-
-            this.log(`${caster.name} ${this.highlightWords('attempts')} to cast ${spellName}...`);
+            this.log(this.getDuelLogEntry('cast', { caster: caster.name, target: target.name, spellName }));
             
             const rollTargetText = document.getElementById('roll-target-text');
             if(rollTargetText) rollTargetText.textContent = `Roll Target: ${spell.accuracy}+`;
 
             this.animateD20((rollResult) => {
                 const success = rollResult >= spell.accuracy;
-                this.log(`d20 Roll: ${rollResult}. ${success ? this.highlightWords('Success!') : this.highlightWords('Failure!')}`, success ? '#34D399' : '#F87171');
-                
-                if (success) {
+                const critFail = rollResult === 1;
+
+                if (critFail) {
+                    this.log(this.getDuelLogEntry('crit_fail', { caster: caster.name, spellName }), '#f472b6');
+                    this.duelPlaySound(this.app.SOUNDS.crit_fail_sound);
+                    if (spell.type.includes('offensive')) {
+                        this.executeSpell(caster, caster, spellName); // Target self
+                    } else {
+                        this.log(`The ${spellName} spell erupts in harmless sparks.`, 'gray');
+                    }
+                } else if (success) {
+                    this.log(`d20 Roll: ${rollResult}. Success!`, '#34D399');
                     this.executeSpell(caster, target, spellName);
                 } else {
-                    this.log(`The spell ${this.highlightWords('fails')}!`, 'gray');
-                    this.app.playSound(this.app.SOUNDS.duel_miss);
+                    this.log(`d20 Roll: ${rollResult}. Failure!`, '#F87171');
+                    this.log(this.getDuelLogEntry('miss', { caster: caster.name, target: target.name, spellName }), 'gray');
+                    this.duelPlaySound(this.app.SOUNDS.duel_miss);
                 }
                 
                 if (this.checkGameOver()) { this.isProcessing = false; return; }
                 this.endTurn();
             }, spell.accuracy);
-        }, 1500); 
+        };
+
+        const delay = this.isFastMode ? 200 : 1500;
+        this.turnTimeout = setTimeout(executeAction, delay);
     },
 
     endTurn() {
         this.updateDuelUI();
-        this.turnTimeout = setTimeout(() => {
+
+        if (this.checkGameOver()) {
             this.isProcessing = false;
-            if (this.currentTarget === this.duelist1) { 
-                this.currentCaster.mp = Math.min(this.currentCaster.maxMp, this.currentCaster.mp + 5);
-                this.currentTarget.mp = Math.min(this.currentTarget.maxMp, this.currentTarget.mp + 5);
-                this.log('End of round. Duelists recover some energy.');
-                this.updateDuelUI();
-                this.turnTimeout = setTimeout(() => this.processTurn(this.duelist1, this.duelist2), 2000);
-            } else {
-                this.processTurn(this.duelist2, this.duelist1);
-            }
-        }, 2000);
+            return;
+        }
+
+        const nextCaster = this.currentTarget;
+        const nextTarget = this.currentCaster;
+        this.currentCaster = nextCaster;
+        this.currentTarget = nextTarget;
+        
+        const isEndOfRound = this.currentTarget === this.duelist1;
+        if (isEndOfRound) {
+            this.currentCaster.mp = Math.min(this.currentCaster.maxMp, this.currentCaster.mp + 5);
+            this.currentTarget.mp = Math.min(this.currentTarget.maxMp, this.currentTarget.mp + 5);
+            this.log('End of round. Duelists recover some energy.');
+            this.updateDuelUI();
+        }
+
+        if (this.isFastMode) {
+            const delay = isEndOfRound ? 1000 : 500;
+            this.turnTimeout = setTimeout(() => this.continueFastDuel(), delay);
+        } else {
+            this.isProcessing = false;
+            this.updateDuelUI();
+            this.log(`It's now ${this.currentCaster.name}'s turn.`, 'yellow');
+        }
     },
 
     animateD20(callback, accuracy) {
-        this.app.playSound(this.app.SOUNDS.dice_roll, 0.05);
+        this.duelPlaySound(this.app.SOUNDS.dice_roll, 0.05);
         const cube = document.getElementById('d20-cube');
         const face = document.getElementById('d20-face-display');
         if (!cube || !face) { if (callback) callback(Math.ceil(Math.random() * 20)); return; }
 
-
-        face.classList.remove('success', 'failure');
+        face.classList.remove('success', 'failure', 'crit-fail');
         cube.classList.add('rolling');
 
-        let rollInterval = setInterval(() => {
-            if (this.isPaused) return;
-            face.textContent = Math.ceil(Math.random() * 20);
-        }, 50);
+        let rollInterval;
+        if (!this.isFastMode) {
+            rollInterval = setInterval(() => {
+                if (this.isPaused) return;
+                face.textContent = Math.ceil(Math.random() * 20);
+            }, 50);
+        }
 
+        const animationDuration = this.isFastMode ? 100 : 1000;
         setTimeout(() => {
-            clearInterval(rollInterval);
+            if(rollInterval) clearInterval(rollInterval);
             cube.classList.remove('rolling');
             const finalResult = Math.ceil(Math.random() * 20);
             face.textContent = finalResult;
-            if (finalResult >= accuracy) {
+            if (finalResult === 1) {
+                face.classList.add('crit-fail');
+            } else if (finalResult >= accuracy) {
                 face.classList.add('success');
             } else {
                 face.classList.add('failure');
             }
             if (callback) callback(finalResult);
-        }, 1000);
+        }, animationDuration);
     },
 
     tickEffects(duelist) {
@@ -2264,6 +2736,7 @@ const DuelingClub = {
         if (availableSpells.length === 0) return "Struggle"; 
         
         if (duelist.effects.guaranteed_hit) {
+            delete duelist.effects.guaranteed_hit;
             const powerfulSpells = availableSpells
                 .map(sName => ({ name: sName, ...this.app.SPELL_DETAILS[sName] }))
                 .filter(s => s.type.includes('offensive') && s.base_dmg)
@@ -2284,15 +2757,15 @@ const DuelingClub = {
         }
         
         caster.mp -= spell.mp;
-        this.app.playSound(this.app.SOUNDS.spell_cast_ui, 0.05);
+        this.duelPlaySound(this.app.SOUNDS.spell_cast_ui, 0.05);
 
         if (spell.type === 'heal') {
             const healAmount = spell.base_heal;
             caster.hp = Math.min(caster.maxHp, caster.hp + healAmount);
-            this.log(`${caster.name} ${this.highlightWords('heals')} themself for ${healAmount} HP.`, 'lightgreen');
+            this.log(this.getDuelLogEntry('heal', {caster: caster.name, healedAmount}), 'lightgreen');
         } else if (spell.type === 'shield') {
             caster.shield = { name: spellName, strength: spell.strength, duration: spell.duration };
-            this.log(`${caster.name} creates a ${this.highlightWords('defensive')} ${this.highlightWords('shield')}, ${spellName}!`, 'cyan');
+            this.log(`${caster.name} creates a defensive shield, ${spellName}!`, 'cyan');
         } else if (spell.type.includes('offensive')) {
             let damage = spell.base_dmg;
             let finalDamage = damage;
@@ -2301,20 +2774,21 @@ const DuelingClub = {
                 const blocked = Math.min(target.shield.strength, damage);
                 finalDamage -= blocked;
                 target.shield.strength -= blocked;
-                this.log(`${target.name}'s ${this.highlightWords('shield')} blocks ${blocked} ${this.highlightWords('damage')}!`, 'cyan');
+                this.log(this.getDuelLogEntry('shield_block', {target: target.name, spellName, blocked}), 'cyan');
+
                 if (target.shield.strength <= 0) {
-                    this.log(`${target.name}'s ${this.highlightWords('shield')} is broken!`, 'red');
+                    this.log(this.getDuelLogEntry('shield_break', {target: target.name}), 'red');
                     target.shield = null;
-                    this.app.playSound(this.app.SOUNDS.shield_break);
+                    this.duelPlaySound(this.app.SOUNDS.shield_break);
                 } else {
-                    this.app.playSound(this.app.SOUNDS.duel_block);
+                    this.duelPlaySound(this.app.SOUNDS.duel_block);
                 }
             }
             
             if (finalDamage > 0) {
                 target.hp = Math.max(0, target.hp - finalDamage);
-                this.log(`${target.name} takes ${finalDamage} ${this.highlightWords('damage')}!`, 'red');
-                this.app.playSound(this.app.SOUNDS.duel_hit);
+                this.log(this.getDuelLogEntry('hit', {target: target.name, damage: finalDamage}), 'red');
+                this.duelPlaySound(this.app.SOUNDS.duel_hit);
             }
         }
         this.updateDuelUI();
@@ -2336,8 +2810,8 @@ const DuelingClub = {
             this.isProcessing = false;
             clearTimeout(this.turnTimeout);
             this.log(`--- DUEL OVER! ---`, '#FFD700');
-            this.log(`${winner.name} of ${winner.house} is ${this.highlightWords('victorious')}!`, '#FFD700');
-            this.app.playSound(this.app.SOUNDS.celebration);
+            this.log(`${winner.name} of ${winner.house} is victorious!`, '#FFD700');
+            this.duelPlaySound(this.app.SOUNDS.celebration);
             
             if (this.app.isAdmin) {
                 this.log('Both duelists have been fully healed.', 'lightgreen');
@@ -2346,11 +2820,10 @@ const DuelingClub = {
 
                 this.app.studentData[winner.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[winner.name].mp = this.app.DEFAULT_MP;
-                this.app.studentData[winner.name].inventory = winner.inventory;
+                // Important: Do not save the used inventory back to the main state
                 
                 this.app.studentData[loser.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[loser.name].mp = this.app.DEFAULT_MP;
-                this.app.studentData[loser.name].inventory = loser.inventory;
                 
                 this.app.addHistory(`Dueling Club: ${winner.name} defeated ${loser.name}.`, `Winner awarded 10 points. Health restored.`);
                 this.app.saveProgress();
@@ -2367,8 +2840,8 @@ const DuelingClub = {
     },
 
     openItemMenu() {
-        if (this.isPaused) return;
-        clearTimeout(this.turnTimeout); 
+        if (this.isPaused || this.isProcessing) return;
+        this.isProcessing = true; // Pause turn progression
         
         const caster = this.currentCaster;
         const itemsHTML = caster.inventory.map(itemName => {
@@ -2389,13 +2862,15 @@ const DuelingClub = {
         `;
         logContainer.appendChild(itemMenu);
         logContainer.scrollTop = logContainer.scrollHeight;
+        this.updateDuelUI();
     },
 
     closeItemMenu() {
         const menu = document.getElementById('item-menu');
         if (menu) menu.remove();
         this.log('Decided not to use an item.');
-        this.processTurn(this.currentCaster, this.currentTarget);
+        this.isProcessing = false;
+        this.updateDuelUI();
     },
 
     useItem(itemName) {
@@ -2403,17 +2878,22 @@ const DuelingClub = {
         if (menu) menu.remove();
 
         const caster = this.currentCaster;
+        this.executeItem(caster, itemName);
+        
+        this.endTurn();
+    },
+    
+    executeItem(caster, itemName) {
         const item = this.app.SHOP_ITEMS[itemName];
         const itemIndex = caster.inventory.indexOf(itemName);
 
         if (itemIndex === -1) {
             this.log("Item not found!", 'red');
-            this.endTurn();
-            return;
+            return false;
         }
 
         this.log(`${caster.name} uses ${itemName}!`, 'lightblue');
-        this.app.playSound(this.app.SOUNDS.potion_use);
+        this.duelPlaySound(this.app.SOUNDS.potion_use);
         caster.inventory.splice(itemIndex, 1);
 
         const effect = item.effect;
@@ -2421,12 +2901,12 @@ const DuelingClub = {
             case 'heal':
                 const healedAmount = Math.min(caster.maxHp - caster.hp, effect.amount);
                 caster.hp += healedAmount;
-                this.log(`${caster.name} ${this.highlightWords('restores')} ${healedAmount} HP.`, 'lightgreen');
+                this.log(this.getDuelLogEntry('potion_heal', {caster: caster.name, healedAmount}), 'lightgreen');
                 break;
             case 'mp_restore':
                 const restoredMp = Math.min(caster.maxMp - caster.mp, effect.amount);
                 caster.mp += restoredMp;
-                this.log(`${caster.name} ${this.highlightWords('restores')} ${restoredMp} MP.`, 'lightblue');
+                this.log(this.getDuelLogEntry('potion_mp', {caster: caster.name, restoredMp}), 'lightblue');
                 break;
             case 'guaranteed_hit':
                 caster.effects.guaranteed_hit = true;
@@ -2434,12 +2914,33 @@ const DuelingClub = {
                 break;
             case 'add_shield':
                 caster.shield = { name: effect.name, strength: effect.strength, duration: effect.duration };
-                this.log(`${caster.name} is now protected by a ${this.highlightWords('shield')} of ${effect.strength} strength!`, 'cyan');
+                this.log(`${caster.name} is now protected by a shield of ${effect.strength} strength!`, 'cyan');
                 break;
         }
-        
-        if (this.checkGameOver()) { this.isProcessing = false; return; }
-        this.endTurn();
+        return true;
+    },
+
+    considerUsingPotion() {
+        const caster = this.currentCaster;
+        // Heal if HP is below 40%
+        if (caster.hp < caster.maxHp * 0.4 && caster.inventory.includes("Wiggenweld Potion")) {
+            return this.executeItem(caster, "Wiggenweld Potion");
+        }
+        // Restore MP if below 15
+        if (caster.mp < 15 && caster.inventory.includes("Focus Draught")) {
+            return this.executeItem(caster, "Focus Draught");
+        }
+        // Use shield if caster has no shield and target is healthy
+        if (!caster.shield && this.currentTarget.hp > this.currentTarget.maxHp * 0.5 && caster.inventory.includes("Shielding Brew")) {
+            return this.executeItem(caster, "Shielding Brew");
+        }
+        return false; // No item was used
+    },
+
+    duelPlaySound(...args) {
+        if (!this.isFastMode) {
+            this.app.playSound(...args);
+        }
     }
 };
 

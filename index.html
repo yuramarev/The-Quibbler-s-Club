@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hogwarts House Cup Tracker</title>
+    <!-- Castle Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&family=IM+Fell+English&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
@@ -34,6 +36,31 @@
         .modal-backdrop.show { opacity: 1; visibility: visible; }
         .modal-content { position: relative; background-color: #1A2B3C; padding: 2rem; border-radius: 0.5rem; border: 1px solid #FFD700; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; transform: scale(0.9); transition: transform 0.3s; }
         .modal-backdrop.show .modal-content { transform: scale(1); }
+        
+        /* Close button for modals - ENHANCED */
+        .modal-close-btn {
+            position: sticky; /* Stick to the top of the scrolling container */
+            top: -1rem; /* Adjust position relative to padding */
+            right: -1rem;
+            float: right; /* Keep it aligned to the right */
+            font-size: 2rem;
+            color: #9CA3AF; /* gray-400 */
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+            z-index: 1010; /* Ensure it's above modal content */
+            background: #1A2B3C; /* Match modal background */
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: -1rem -1rem 0 0; /* Adjust for padding */
+        }
+        .modal-close-btn:hover { color: #FFFFFF; }
+
         #definition-popup-modal { z-index: 2500; } /* Ensure definition popup is on top of reading mode */
         .btn { padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; transition: all 0.2s; border: 1px solid transparent; cursor: pointer; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
@@ -54,6 +81,7 @@
         .d20-face.success { background: rgba(42, 98, 61, 0.8); border-color: #34D399; }
         .d20-face.failure { background: rgba(174, 0, 1, 0.8); border-color: #F87171; }
         .d20-face.crit-fail { background: rgba(100, 0, 100, 0.9); border-color: #f0f; box-shadow: 0 0 15px #f0f; }
+        .d20-face.crit-success { background: rgba(255, 215, 0, 0.8); border-color: #fff; color: #0C1C33; box-shadow: 0 0 15px #FFD700; }
         @keyframes roll-dice {
             0% { transform: rotateX(0deg) rotateY(0deg); }
             100% { transform: rotateX(1080deg) rotateY(1080deg); }
@@ -272,6 +300,69 @@
             font-weight: bold;
             border: 1px solid white;
         }
+        
+        /* Quidditch Styles */
+        .quidditch-chat-message {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            max-width: 90%;
+        }
+        .quidditch-chat-message.user-message {
+            background-color: #2B4C7E; /* Ravenclaw Blue */
+            align-self: flex-end;
+            text-align: right;
+        }
+        .quidditch-chat-message.ai-message {
+            background-color: #2A3B4D;
+            align-self: flex-start;
+        }
+        .quidditch-chat-message.event-message {
+            background-color: transparent;
+            color: #FFD700;
+            font-style: italic;
+            text-align: center;
+            align-self: center;
+            width: 100%;
+        }
+        #quidditch-dice-container {
+            perspective: 600px;
+        }
+        #quidditch-dice {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s ease-out;
+        }
+        #quidditch-dice.rolling {
+            animation: quidditch-roll 1s ease-out;
+        }
+        @keyframes quidditch-roll {
+            from { transform: rotateX(0deg) rotateY(0deg); }
+            to   { transform: rotateX(720deg) rotateY(720deg); }
+        }
+        .quidditch-dice-face {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #FFD700;
+            color: #FFD700;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Glow effects */
+        .glow {
+            animation: glow 2s infinite alternate;
+        }
+        @keyframes glow {
+            from { box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #FFD700, 0 0 20px #FFD700; }
+            to { box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #FFD700, 0 0 40px #FFD700; }
+        }
     </style>
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
@@ -323,7 +414,7 @@
     <div id="app-container" class="p-4 md:p-8 max-w-7xl mx-auto" style="display: none;">
         
         <!-- Header -->
-        <header class="bg-[#1A2B3C] p-4 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#FFD700]">
+        <header class="bg-[#1A2B3C] p-4 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#FFD700] glow">
             <div class="flex items-center gap-4 mb-4 md:mb-0">
                 <!-- Logo Uploader -->
                 <div class="relative group cursor-pointer">
@@ -343,6 +434,7 @@
                  <div class="text-sm text-gray-300">
                     User: <span id="user-display" class="font-bold text-white"></span>
                  </div>
+                <button id="quidditch-btn" class="btn btn-gold">⚡ Quidditch</button>
                 <button id="dictionary-btn" class="btn btn-gold">📖 Dictionary</button>
                 <button id="library-btn" class="btn btn-gold">📚 Library</button>
                 <button id="magic-shop-btn" class="btn btn-gold">🛍️ Magic Shop</button>
@@ -430,6 +522,9 @@
     </div>
     <div id="definition-popup-modal" class="modal-backdrop">
         <div id="definition-popup-content" class="modal-content"></div>
+    </div>
+    <div id="quidditch-modal" class="modal-backdrop">
+        <div id="quidditch-modal-content" class="modal-content !max-w-4xl !max-h-[95vh]"></div>
     </div>
     
     <!-- Reading Mode Container -->
@@ -624,7 +719,7 @@ onAuthStateChanged(auth, (user) => {
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "24.2 Potion Request Fix", // Updated version
+    VERSION: "24.10 Glowing Header", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -647,7 +742,7 @@ const App = {
         "Wiggenweld Potion": { cost: 50, icon: "🧪", desc: "A healing potion that restores 50 HP.", effect: { type: 'heal', amount: 50 } },
         "Focus Draught": { cost: 40, icon: "💧", desc: "A magical draught that restores 40 MP.", effect: { type: 'mp_restore', amount: 40 } },
         "Shielding Brew": { cost: 75, icon: "🛡️", desc: "Creates a temporary magical shield that absorbs 30 damage.", effect: { type: 'add_shield', strength: 30, duration: 2, name: 'Shielding Brew' } },
-        "Felix Felicis (Dose)": { cost: 200, icon: "✨", desc: "Guarantees your next spell roll is a success (d20 = 20). Single use.", effect: { type: 'guaranteed_hit' } }
+        "Felix Felicis (Dose)": { cost: 200, icon: "✨", desc: "Grants a guaranteed critical success (d20 = 20) on your next two spell rolls. Single use.", effect: { type: 'guaranteed_hit', duration: 2 } }
     },
     SPELLS: [
         "Expelliarmus", "Stupefy", "Protego", "Insendio", "Diffindo", "Petrificus Totalus",
@@ -721,6 +816,7 @@ const App = {
         Shop.app = this;
         Library.app = this;
         Dictionary.app = this;
+        Quidditch.app = this;
     },
 
     // ==== EVENT BINDING ====
@@ -741,6 +837,7 @@ const App = {
         document.getElementById('magic-shop-btn').addEventListener('click', () => Shop.open());
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
+        document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
         
         // Event delegation for student list actions
         document.getElementById('student-list-container').addEventListener('click', (e) => {
@@ -753,7 +850,9 @@ const App = {
         // Global listener for Escape key
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
-                if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
+                 if (document.getElementById('quidditch-modal').classList.contains('show')) {
+                    Quidditch.closeGame();
+                } else if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
                     Library.exitReadingMode();
                 } else if (document.getElementById('reader-modal').classList.contains('show')) {
                     Library.closeReader();
@@ -977,6 +1076,7 @@ const App = {
         const modalContent = document.getElementById('modal-content');
         
         modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="App.closeModal()">&times;</span>
             <h3 class="font-magic-header text-2xl text-[#FFD700] mb-4">${title}</h3>
             <div class="space-y-4">${contentHTML}</div>
             <div class="flex justify-end gap-4 mt-6">
@@ -1065,6 +1165,22 @@ const App = {
             this.saveProgress();
             this.closeModal();
         }, 'Apply');
+
+        // Add listener to auto-select house
+        const studentSelect = document.getElementById('points-student');
+        const houseSelect = document.getElementById('points-house');
+        studentSelect.addEventListener('change', (e) => {
+            const selectedStudent = e.target.value;
+            if (selectedStudent !== '(Entire House)') {
+                const studentHouse = this.currentAssignments[selectedStudent];
+                if (studentHouse) {
+                    houseSelect.value = studentHouse;
+                    houseSelect.disabled = true;
+                }
+            } else {
+                houseSelect.disabled = false;
+            }
+        });
     },
 
     openAwardAchievementDialog() {
@@ -1286,7 +1402,6 @@ const App = {
         `).join('') : '<p class="text-gray-400">No points history.</p>';
 
         const content = `
-            <button id="close-profile-btn" class="absolute top-4 right-4 text-2xl text-gray-400 hover:text-white">&times;</button>
             <div class="flex items-center gap-4 mb-4">
                 <div class="text-6xl">${house.animal}</div>
                 <div>
@@ -1312,12 +1427,6 @@ const App = {
             <div class="space-y-1 max-h-32 overflow-y-auto">${historyHTML}</div>
         `;
         this.openModal(`Student Profile: ${studentName}`, content, null);
-        
-        // Add event listener for close button
-        const closeBtn = document.getElementById('close-profile-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.closeModal());
-        }
     },
 
     showHistoryLog() {
@@ -1735,15 +1844,14 @@ const Dictionary = {
 
         if (targetId === 'dictionary-modal-content') {
             container.innerHTML = `
+                <span class="modal-close-btn" onclick="Dictionary.closeDictionary()">&times;</span>
                 <div class="flex justify-between items-center mb-4 border-b-2 border-yellow-600 pb-3">
                     <h3 class="font-magic-header text-2xl text-[#FFD700]">Your Personal Dictionary</h3>
-                    <button id="close-dictionary-btn" class="text-3xl text-gray-400 hover:text-white">&times;</button>
                 </div>
                 <div class="space-y-3 max-h-[65vh] overflow-y-auto p-1">
                     ${Object.keys(this.userWords).length > 0 ? wordsHTML : '<p class="text-center text-gray-400 p-8">Your dictionary is empty. Click words in books to add them!</p>'}
                 </div>
             `;
-            container.querySelector('#close-dictionary-btn').addEventListener('click', () => this.closeDictionary());
         } else { // For reading mode sidebar
             container.innerHTML = `
                  <h3 class="font-magic-header text-xl text-center text-[#8B4513] mb-4 border-b-2 border-[#d3c0a5] pb-2">Dictionary</h3>
@@ -1770,6 +1878,7 @@ const Dictionary = {
         const modalContent = document.getElementById('definition-popup-content');
 
         modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="document.getElementById('definition-popup-modal').classList.remove('show')">&times;</span>
             <h3 class="font-magic-header text-2xl text-[#FFD700] mb-4 capitalize">${word}</h3>
             <div id="definition-display" class="my-4 text-gray-300 min-h-[60px] flex justify-center items-center text-left">
                 <div class="spinner"></div>
@@ -1928,21 +2037,19 @@ const Library = {
             }).join('');
 
             modalContent.innerHTML = `
+                <span class="modal-close-btn" onclick="document.getElementById('library-modal').classList.remove('show')">&times;</span>
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-magic-header text-2xl text-[#FFD700]">The Library</h3>
-                    <button id="close-library-btn" class="text-2xl text-gray-400 hover:text-white">&times;</button>
                 </div>
                 <div class="space-y-4">
                     ${books.length > 0 ? booksHTML : '<p class="text-center text-gray-400 py-4">The library is currently empty.</p>'}
                 </div>
             `;
-            modalContent.querySelector('#close-library-btn').addEventListener('click', () => modal.classList.remove('show'));
         } catch (error) {
             console.error("Error fetching books:", error);
             this.app.showNotification("Could not open the library.", "error");
             modalContent.innerHTML = `<p class="text-center text-red-400">Error loading library. Check Firestore security rules.</p>
-            <button id="close-library-btn-error" class="btn btn-gold mt-4">Close</button>`;
-            modalContent.querySelector('#close-library-btn-error').addEventListener('click', () => modal.classList.remove('show'));
+            <button class="btn btn-gold mt-4" onclick="document.getElementById('library-modal').classList.remove('show')">Close</button>`;
         }
     },
 
@@ -1991,9 +2098,9 @@ const Library = {
             }
 
             readerContent.innerHTML = `
+                <span class="modal-close-btn" onclick="Library.closeReader()">&times;</span>
                 <div class="flex justify-between items-center mb-4 border-b border-[#3D5568] pb-4">
                     <h3 class="font-magic-header text-2xl text-[#FFD700]">${bookTitle}</h3>
-                    <button id="close-reader-btn" class="text-3xl text-gray-400 hover:text-white">&times;</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                     <div class="md:col-span-1">
@@ -2018,7 +2125,6 @@ const Library = {
                     </div>
                 </div>
             `;
-            readerContent.querySelector('#close-reader-btn').addEventListener('click', () => this.closeReader());
             readerContent.querySelector('#reading-mode-btn').addEventListener('click', () => this.enterReadingMode());
             readerContent.querySelector('#font-family-select').addEventListener('change', (e) => this.changeFontFamily(e.target.value));
             
@@ -2300,7 +2406,7 @@ const DuelingClub = {
     turnTimeout: null,
     currentCaster: null,
     currentTarget: null,
-    WORDS_TO_HIGHLIGHT: ['damage', 'shield', 'heals', 'restores', 'victorious', 'fails', 'attempts', 'defensive', 'offensive', 'success', 'failure', 'blocks', 'broken', 'fades', 'backfires', 'potion'],
+    WORDS_TO_HIGHLIGHT: ['damage', 'shield', 'heals', 'restores', 'victorious', 'fails', 'attempts', 'defensive', 'offensive', 'success', 'failure', 'blocks', 'broken', 'fades', 'backfires', 'potion', 'lucky'],
 
     DESCRIPTIONS: {
         cast: [
@@ -2366,7 +2472,7 @@ const DuelingClub = {
 
         const studentOptions = Object.keys(this.app.studentData).sort();
         const content = `
-            <button id="close-duel-setup" class="absolute top-2 right-4 text-3xl text-gray-400 hover:text-white transition-colors">&times;</button>
+            <span class="modal-close-btn" onclick="DuelingClub.closeDuelModal()">&times;</span>
             <div class="text-center mb-4">
                  <h3 class="font-magic-header text-3xl text-[#FFD700]">The Dueling Club</h3>
                  <p>Choose two students and a duel mode.</p>
@@ -2393,7 +2499,6 @@ const DuelingClub = {
         modal.classList.add('show');
         modal.querySelector('#start-duel-btn').addEventListener('click', () => this.startDuel(false));
         modal.querySelector('#start-fast-duel-btn').addEventListener('click', () => this.startDuel(true));
-        modal.querySelector('#close-duel-setup').addEventListener('click', () => this.closeDuelModal());
     },
 
     closeDuelModal() {
@@ -2457,7 +2562,7 @@ const DuelingClub = {
         }
 
         const content = `
-            <button id="force-close-duel" class="absolute top-2 right-4 text-3xl text-gray-400 hover:text-white transition-colors">&times;</button>
+            <span class="modal-close-btn" onclick="DuelingClub.closeDuelModal()">&times;</span>
             <div id="duel-arena" class="p-4 rounded-lg">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div id="duelist1-panel" class="duelist-panel bg-[#0C1C33] p-4 rounded-lg border border-gray-600"></div>
@@ -2476,7 +2581,6 @@ const DuelingClub = {
         `;
         const modalContent = document.getElementById('duel-modal-content');
         modalContent.innerHTML = content;
-        modalContent.querySelector('#force-close-duel').addEventListener('click', () => this.closeDuelModal());
         
         if (this.isFastMode) {
             modalContent.querySelector('#pause-resume-btn').addEventListener('click', () => this.togglePause());
@@ -2521,6 +2625,9 @@ const DuelingClub = {
                 const item = this.app.SHOP_ITEMS[itemName];
                 return `<span title="${item.desc}">${item.icon}</span>`;
             }).join(' ');
+            
+            const felixText = (duelist.effects.guaranteed_hit && duelist.effects.guaranteed_hit.duration > 0) ? 
+                `<p class="text-sm text-yellow-300">✨ Lucky (${duelist.effects.guaranteed_hit.duration})</p>` : '';
 
             let panelHTML = `
                 <h4 class="font-bold text-lg" style="color:${house.color}">${house.animal} ${duelist.name}</h4>
@@ -2534,6 +2641,7 @@ const DuelingClub = {
                 </div>
                 <p class="text-sm">Status: <span class="text-yellow-400">${statusText}</span></p>
                 ${duelist.shield ? `<p class="text-sm text-cyan-400">Shield: ${duelist.shield.name} (${duelist.shield.strength})</p>` : ''}
+                ${felixText}
                 <p class="text-sm mt-1">Inventory: ${inventoryText || 'Empty'}</p>
             `;
             if (this.currentCaster === duelist && !this.isProcessing && !this.gameOver && !this.isFastMode && duelist.inventory.length > 0) {
@@ -2614,7 +2722,29 @@ const DuelingClub = {
             
             const rollTargetText = document.getElementById('roll-target-text');
             if(rollTargetText) rollTargetText.textContent = `Roll Target: ${spell.accuracy}+`;
-
+            
+            // *** NEW: Check for Felix Felicis effect ***
+            if (caster.effects.guaranteed_hit && caster.effects.guaranteed_hit.duration > 0) {
+                this.log(`${caster.name} is under the effect of Felix Felicis!`, '#FFD700');
+                caster.effects.guaranteed_hit.duration--;
+                
+                // Animate the dice to show 20
+                this.animateD20(() => {
+                    this.log(`d20 Roll: 20. Critical Success!`, '#FFD700');
+                    this.executeSpell(caster, target, spellName);
+                    
+                    if (caster.effects.guaranteed_hit.duration <= 0) {
+                        delete caster.effects.guaranteed_hit;
+                        this.log('The luck of Felix Felicis wears off.', 'cyan');
+                    }
+                    
+                    if (this.checkGameOver()) { this.isProcessing = false; return; }
+                    this.endTurn();
+                }, 21, 20); // accuracy > 20 to force success style, force result to 20
+                return; // Skip normal roll
+            }
+            
+            // Normal roll if not lucky
             this.animateD20((rollResult) => {
                 const success = rollResult >= spell.accuracy;
                 const critFail = rollResult === 1;
@@ -2676,13 +2806,13 @@ const DuelingClub = {
         }
     },
 
-    animateD20(callback, accuracy) {
+    animateD20(callback, accuracy, forceResult = null) {
         this.duelPlaySound(this.app.SOUNDS.dice_roll, 0.05);
         const cube = document.getElementById('d20-cube');
         const face = document.getElementById('d20-face-display');
-        if (!cube || !face) { if (callback) callback(Math.ceil(Math.random() * 20)); return; }
+        if (!cube || !face) { if (callback) callback(forceResult || Math.ceil(Math.random() * 20)); return; }
 
-        face.classList.remove('success', 'failure', 'crit-fail');
+        face.classList.remove('success', 'failure', 'crit-fail', 'crit-success');
         cube.classList.add('rolling');
 
         let rollInterval;
@@ -2697,9 +2827,11 @@ const DuelingClub = {
         setTimeout(() => {
             if(rollInterval) clearInterval(rollInterval);
             cube.classList.remove('rolling');
-            const finalResult = Math.ceil(Math.random() * 20);
+            const finalResult = forceResult !== null ? forceResult : Math.ceil(Math.random() * 20);
             face.textContent = finalResult;
-            if (finalResult === 1) {
+            if (finalResult === 20) {
+                face.classList.add('crit-success');
+            } else if (finalResult === 1) {
                 face.classList.add('crit-fail');
             } else if (finalResult >= accuracy) {
                 face.classList.add('success');
@@ -2735,17 +2867,7 @@ const DuelingClub = {
         });
         if (availableSpells.length === 0) return "Struggle"; 
         
-        if (duelist.effects.guaranteed_hit) {
-            delete duelist.effects.guaranteed_hit;
-            const powerfulSpells = availableSpells
-                .map(sName => ({ name: sName, ...this.app.SPELL_DETAILS[sName] }))
-                .filter(s => s.type.includes('offensive') && s.base_dmg)
-                .sort((a, b) => b.base_dmg - a.base_dmg);
-            if (powerfulSpells.length > 0) {
-                this.log(`${duelist.name} feels lucky and prepares a powerful spell...`, 'yellow');
-                return powerfulSpells[0].name;
-            }
-        }
+        // Let the Felix Felicis check in processTurn handle the powerful spell logic
         return availableSpells[Math.floor(Math.random() * availableSpells.length)];
     },
 
@@ -2762,7 +2884,7 @@ const DuelingClub = {
         if (spell.type === 'heal') {
             const healAmount = spell.base_heal;
             caster.hp = Math.min(caster.maxHp, caster.hp + healAmount);
-            this.log(this.getDuelLogEntry('heal', {caster: caster.name, healedAmount}), 'lightgreen');
+            this.log(this.getDuelLogEntry('heal', {caster: caster.name, healedAmount: healAmount}), 'lightgreen');
         } else if (spell.type === 'shield') {
             caster.shield = { name: spellName, strength: spell.strength, duration: spell.duration };
             this.log(`${caster.name} creates a defensive shield, ${spellName}!`, 'cyan');
@@ -2820,7 +2942,6 @@ const DuelingClub = {
 
                 this.app.studentData[winner.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[winner.name].mp = this.app.DEFAULT_MP;
-                // Important: Do not save the used inventory back to the main state
                 
                 this.app.studentData[loser.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[loser.name].mp = this.app.DEFAULT_MP;
@@ -2901,16 +3022,16 @@ const DuelingClub = {
             case 'heal':
                 const healedAmount = Math.min(caster.maxHp - caster.hp, effect.amount);
                 caster.hp += healedAmount;
-                this.log(this.getDuelLogEntry('potion_heal', {caster: caster.name, healedAmount}), 'lightgreen');
+                this.log(this.getDuelLogEntry('potion_heal', {caster: caster.name, healedAmount: healedAmount}), 'lightgreen');
                 break;
             case 'mp_restore':
                 const restoredMp = Math.min(caster.maxMp - caster.mp, effect.amount);
                 caster.mp += restoredMp;
-                this.log(this.getDuelLogEntry('potion_mp', {caster: caster.name, restoredMp}), 'lightblue');
+                this.log(this.getDuelLogEntry('potion_mp', {caster: caster.name, restoredMp: restoredMp}), 'lightblue');
                 break;
             case 'guaranteed_hit':
-                caster.effects.guaranteed_hit = true;
-                this.log(`The next spell is now a guaranteed hit!`, 'yellow');
+                caster.effects.guaranteed_hit = { duration: effect.duration };
+                this.log(`The next ${effect.duration} spell rolls are now guaranteed critical successes!`, '#FFD700');
                 break;
             case 'add_shield':
                 caster.shield = { name: effect.name, strength: effect.strength, duration: effect.duration };
@@ -2945,6 +3066,315 @@ const DuelingClub = {
 };
 
 window.DuelingClub = DuelingClub;
+
+// =================================================================================
+// QUIDDITCH D&D MODULE (UPGRADED GM AI)
+// =================================================================================
+const Quidditch = {
+    app: null,
+    isProcessing: false,
+    chatHistory: [],
+    gameState: {},
+    GROQ_API_KEY: "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",
+
+    openGame() {
+        const modal = document.getElementById('quidditch-modal');
+        const modalContent = document.getElementById('quidditch-modal-content');
+        
+        modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="Quidditch.closeGame()">&times;</span>
+            <div class="flex flex-col h-[85vh]">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-magic-header text-3xl text-center text-[#FFD700]">Quidditch Match</h3>
+                    <div id="quidditch-scoreboard" class="font-bold text-xl text-white"></div>
+                </div>
+                
+                <!-- Chat/Narrative Display -->
+                <div id="quidditch-chat-display" class="flex-grow bg-[#0C1C33] p-4 rounded-lg border border-[#3D5568] mb-4 overflow-y-auto flex flex-col">
+                    <!-- Messages will be injected here -->
+                </div>
+                
+                <!-- Player Controls -->
+                <div class="flex-shrink-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Action Buttons -->
+                    <div class="md:col-span-1 space-y-2">
+                        <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Try to score with the Quaffle')">Score with Quaffle</button>
+                        <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Search for the Golden Snitch')">Search for Snitch</button>
+                        <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Hit a Bludger at an opponent')">Hit a Bludger</button>
+                        <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Defend the goalposts')">Defend Goals</button>
+                    </div>
+                    
+                    <!-- Custom Action & Dice -->
+                    <div class="md:col-span-2 bg-[#1A2B3C] p-4 rounded-lg border border-[#3D5568] flex flex-col justify-between">
+                        <input type="text" id="quidditch-custom-action" placeholder="Or type your own action..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568] mb-2">
+                        <div class="flex items-center justify-between">
+                            <div id="quidditch-dice-container">
+                                <div id="quidditch-dice">
+                                    <div id="quidditch-dice-face" class="quidditch-dice-face">20</div>
+                                </div>
+                            </div>
+                            <button id="quidditch-roll-btn" class="btn bg-green-600 text-white text-lg flex-grow ml-4" onclick="Quidditch.performAction()">Roll d20 & Act!</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.add('show');
+        this.startGame();
+    },
+
+    closeGame() {
+        document.getElementById('quidditch-modal').classList.remove('show');
+    },
+
+    startGame() {
+        this.isProcessing = false;
+        this.gameState = {
+            score: { player: 0, opponent: 0 },
+            possession: 'neutral',
+            snitchSpotted: false,
+            turn: 0,
+            weather: 'clear'
+        };
+        
+        const systemPrompt = `You are the "Quidditch Commentary Box AI," controlling a duo of commentators: Lee, who is very biased and excited for the player's team, and Gwenog, a calm professional ex-player. You are also the game master. Your task is to:
+1. Narrate the outcome of the player's action based on their roll and the current game state. The commentary should be a back-and-forth between Lee and Gwenog. Be exciting and descriptive.
+2. Introduce random events. A Bludger attack, a foul, a change in weather, a brilliant move by a teammate, etc.
+3. Update the game state. At the VERY END of your commentary, you MUST include ONE special tag on a NEW LINE to update the game.
+
+**Game State Tags (CHOOSE ONLY ONE PER RESPONSE):**
+- [SCORE PLAYER 10]
+- [SCORE OPPONENT 10]
+- [POSSESSION PLAYER]
+- [POSSESSION OPPONENT]
+- [SNITCH SPOTTED]
+- [SNITCH CAUGHT PLAYER]
+- [EVENT BLUDGER_ATTACK]
+- [NO_CHANGE]
+
+**CRITICAL RULE:** Do NOT answer any non-Quidditch questions. If the user asks something unrelated to the match, you MUST redirect them back to the game. Example: "Lee: No time for that, look out! A Bludger is heading your way! What do you do?"
+
+**Example Interaction:**
+Player Action: "Try to score with the Quaffle", Roll: 18
+Game State: { "score": { "player": 10, "opponent": 10 }, "possession": "player" }
+Your Response:
+Lee: "And they're off! A brilliant dodge past the opponent's Chaser! This is it!"
+Gwenog: "Textbook form. They see the opening, they take the shot... GOAL! A fantastic play, putting them ahead."
+[SCORE PLAYER 10]`;
+
+        const openingLine = "Lee: Welcome back to the Hogwarts Pitch! The players are taking their positions, and the energy here is electric! \nGwenog: It's a fine day for a match, Lee. Let's see which team has the edge today. \nLee: The whistle blows! What's your first move?";
+
+        this.chatHistory = [
+            { role: "system", content: systemPrompt },
+            { role: "assistant", content: openingLine }
+        ];
+        
+        const chatDisplay = document.getElementById('quidditch-chat-display');
+        if(chatDisplay) chatDisplay.innerHTML = '';
+        this.addMessage(openingLine, "ai");
+        this.updateScoreboard();
+    },
+
+    updateScoreboard() {
+        const scoreboard = document.getElementById('quidditch-scoreboard');
+        if (scoreboard) {
+            scoreboard.innerHTML = `YOU: ${this.gameState.score.player} - OPPONENT: ${this.gameState.score.opponent}`;
+        }
+    },
+
+    addMessage(text, sender, rollResult = null) {
+        const chatDisplay = document.getElementById('quidditch-chat-display');
+        if (!chatDisplay) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('quidditch-chat-message');
+        
+        let content = ``;
+        if (sender === 'user') {
+            messageDiv.classList.add('user-message');
+            content = `<p class="font-bold">You (Rolled ${rollResult}):</p><p>${text}</p>`;
+        } else if (sender === 'ai') {
+            messageDiv.classList.add('ai-message');
+            // Make commentator names bold
+            let formattedText = text.replace(/^(Lee:)/gm, '<strong class="text-yellow-300">Lee:</strong>');
+            formattedText = formattedText.replace(/^(Gwenog:)/gm, '<strong class="text-cyan-300">Gwenog:</strong>');
+            content = `<div>${formattedText.replace(/\n/g, '<br>')}</div>`;
+        } else { // 'event'
+             messageDiv.classList.add('event-message');
+             content = `<p>${text}</p>`;
+        }
+        
+        messageDiv.innerHTML = content;
+        chatDisplay.appendChild(messageDiv);
+        chatDisplay.scrollTop = chatDisplay.scrollHeight;
+    },
+
+    async performAction(predefinedAction = null) {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        this.toggleControls(false);
+
+        const customActionInput = document.getElementById('quidditch-custom-action');
+        const actionText = predefinedAction || customActionInput.value.trim();
+
+        if (!actionText) {
+            this.app.showNotification("You must specify an action!", "error");
+            this.isProcessing = false;
+            this.toggleControls(true);
+            return;
+        }
+
+        const roll = await this.animateDice();
+        this.addMessage(actionText, 'user', roll);
+        customActionInput.value = '';
+
+        this.getAIResponse(actionText, roll);
+    },
+
+    async getAIResponse(action, roll) {
+        this.addMessage("The commentators watch intently...", "event");
+        this.gameState.turn++;
+
+        const currentActionPrompt = `Player Action: "${action}"\nd20 Roll: ${roll}\nCurrent Game State: ${JSON.stringify(this.gameState)}`;
+        
+        const messagesForAPI = [...this.chatHistory];
+        messagesForAPI.push({ role: "user", content: currentActionPrompt });
+
+        try {
+            if (!this.GROQ_API_KEY) {
+                 throw new Error("Groq API key is not set.");
+            }
+            
+            const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+
+            const payload = {
+                model: "llama3-8b-8192",
+                messages: messagesForAPI
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Groq API Error:", errorData);
+                throw new Error(`API request failed: ${errorData.error.message}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.choices && result.choices[0]?.message?.content) {
+                const rawText = result.choices[0].message.content;
+                
+                this.chatHistory.push({ role: "user", content: currentActionPrompt });
+                this.processAIResponse(rawText);
+            } else {
+                console.error("Invalid API Response:", result);
+                throw new Error("API response was empty or malformed.");
+            }
+
+        } catch (error) {
+            console.error("Error calling Groq API:", error);
+            this.addMessage(`The magic connecting us to the commentary box seems to have failed. Error: ${error.message}. Please check the API key and console.`, "event");
+        } finally {
+            this.isProcessing = false;
+            this.toggleControls(true);
+        }
+    },
+
+    processAIResponse(rawText) {
+        const tagMatch = rawText.match(/\[(.*?)\]/);
+        let commentary = rawText;
+        let tag = '[NO_CHANGE]';
+
+        if (tagMatch) {
+            commentary = rawText.replace(tagMatch[0], '').trim();
+            tag = tagMatch[0];
+        }
+
+        this.addMessage(commentary, 'ai');
+        this.chatHistory.push({ role: "assistant", content: rawText });
+
+        // Update game state based on the tag
+        const tagParts = tag.replace(/[\[\]]/g, '').split(' ');
+        const command = tagParts[0];
+        const subject = tagParts[1];
+        const value = parseInt(tagParts[2], 10);
+
+        switch(command) {
+            case 'SCORE':
+                if (subject === 'PLAYER') this.gameState.score.player += value;
+                if (subject === 'OPPONENT') this.gameState.score.opponent += value;
+                this.updateScoreboard();
+                break;
+            case 'POSSESSION':
+                this.gameState.possession = subject.toLowerCase();
+                break;
+            case 'SNITCH':
+                if (subject === 'SPOTTED') this.gameState.snitchSpotted = true;
+                if (subject === 'CAUGHT' && subject === 'PLAYER') {
+                    this.gameState.score.player += 150;
+                    this.updateScoreboard();
+                    this.addMessage("YOU'VE CAUGHT THE SNITCH! YOU WIN!", "event");
+                    this.isProcessing = true; // End game
+                    this.toggleControls(false);
+                }
+                break;
+            case 'EVENT':
+                // Could add specific logic for events like BLUDGER_ATTACK here
+                break;
+        }
+    },
+
+    animateDice() {
+        return new Promise(resolve => {
+            this.app.playSound(this.app.SOUNDS.dice_roll, 0.05);
+            const dice = document.getElementById('quidditch-dice');
+            const face = document.getElementById('quidditch-dice-face');
+            if (!dice || !face) { resolve(Math.ceil(Math.random() * 20)); return; }
+
+            dice.classList.add('rolling');
+            
+            const rollInterval = setInterval(() => {
+                face.textContent = Math.ceil(Math.random() * 20);
+            }, 60);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                dice.classList.remove('rolling');
+                const finalResult = Math.ceil(Math.random() * 20);
+                face.textContent = finalResult;
+                resolve(finalResult);
+            }, 1000);
+        });
+    },
+
+    toggleControls(enabled) {
+        const rollBtn = document.getElementById('quidditch-roll-btn');
+        const actionBtns = document.querySelectorAll('#quidditch-modal .btn');
+        const input = document.getElementById('quidditch-custom-action');
+
+        if (enabled) {
+            rollBtn.disabled = false;
+            rollBtn.innerHTML = 'Roll d20 & Act!';
+            actionBtns.forEach(btn => btn.disabled = false);
+            input.disabled = false;
+        } else {
+            rollBtn.disabled = true;
+            rollBtn.innerHTML = '<div class="spinner mx-auto"></div>';
+            actionBtns.forEach(btn => btn.disabled = true);
+            input.disabled = true;
+        }
+    }
+};
+window.Quidditch = Quidditch;
 
 </script>
 </body>

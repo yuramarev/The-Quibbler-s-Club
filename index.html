@@ -3075,13 +3075,55 @@ const Quidditch = {
     isProcessing: false,
     chatHistory: [],
     gameState: {},
-    GROQ_API_KEY: "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",
+    GROQ_API_KEY: null, // REMOVED hardcoded key
 
     openGame() {
         const modal = document.getElementById('quidditch-modal');
         const modalContent = document.getElementById('quidditch-modal-content');
+        modal.classList.add('show');
         
-        modalContent.innerHTML = `
+        this.GROQ_API_KEY = localStorage.getItem('groqApiKey');
+
+        if (this.GROQ_API_KEY) {
+            this.renderGameUI(modalContent);
+            this.startGame();
+        } else {
+            this.renderApiKeySetup(modalContent);
+        }
+    },
+
+    renderApiKeySetup(container) {
+        container.innerHTML = `
+            <span class="modal-close-btn" onclick="Quidditch.closeGame()">&times;</span>
+            <div class="flex flex-col items-center justify-center h-full">
+                <h3 class="font-magic-header text-3xl text-center text-[#FFD700]">Quidditch Commentary Setup</h3>
+                <p class="text-center my-4 text-gray-300">To power the magical commentary box, please provide your Groq API key. This is a free key you can get from the Groq website.</p>
+                <div class="w-full max-w-md">
+                    <label for="groq-api-key" class="block mb-2 text-sm font-medium text-gray-300">Your Groq API Key</label>
+                    <input type="password" id="groq-api-key" placeholder="gsk_..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568]">
+                    <button class="btn btn-gold w-full mt-4" onclick="Quidditch.saveApiKey()">Save Key & Start Game</button>
+                    <a href="https://console.groq.com/keys" target="_blank" class="block text-center mt-2 text-sm text-[#FFD700] hover:underline">Get a Groq API Key</a>
+                </div>
+            </div>
+        `;
+    },
+
+    saveApiKey() {
+        const keyInput = document.getElementById('groq-api-key');
+        const key = keyInput.value.trim();
+        if (key) {
+            localStorage.setItem('groqApiKey', key);
+            this.GROQ_API_KEY = key;
+            const modalContent = document.getElementById('quidditch-modal-content');
+            this.renderGameUI(modalContent);
+            this.startGame();
+        } else {
+            this.app.showNotification("Please enter a valid API key.", "error");
+        }
+    },
+
+    renderGameUI(container) {
+        container.innerHTML = `
             <span class="modal-close-btn" onclick="Quidditch.closeGame()">&times;</span>
             <div class="flex flex-col h-[85vh]">
                 <div class="flex justify-between items-center mb-4">
@@ -3119,9 +3161,6 @@ const Quidditch = {
                 </div>
             </div>
         `;
-        
-        modal.classList.add('show');
-        this.startGame();
     },
 
     closeGame() {
@@ -3243,7 +3282,7 @@ Gwenog: "Textbook form. They see the opening, they take the shot... GOAL! A fant
 
         try {
             if (!this.GROQ_API_KEY) {
-                 throw new Error("Groq API key is not set.");
+                 throw new Error("Groq API key is not set. Please set it up in the Quidditch modal.");
             }
             
             const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';

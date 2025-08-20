@@ -719,7 +719,7 @@ onAuthStateChanged(auth, (user) => {
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "24.10 Glowing Header", // Updated version
+    VERSION: "24.11 Quidditch Fix", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -3192,7 +3192,9 @@ const Quidditch = {
 - [EVENT BLUDGER_ATTACK]
 - [NO_CHANGE]
 
-**CRITICAL RULE:** Do NOT answer any non-Quidditch questions. If the user asks something unrelated to the match, you MUST redirect them back to the game. Example: "Lee: No time for that, look out! A Bludger is heading your way! What do you do?"
+**CRITICAL RULES:**
+1. Do NOT answer any non-Quidditch questions. If the user asks something unrelated to the match, you MUST redirect them back to the game. Example: "Lee: No time for that, look out! A Bludger is heading your way! What do you do?"
+2. Do NOT include the "Current Game State" JSON object in your response. Your response should ONLY be the commentary from Lee and Gwenog, followed by a single game state tag on a new line.
 
 **Example Interaction:**
 Player Action: "Try to score with the Quaffle", Roll: 18

@@ -450,6 +450,7 @@
                 <button id="quidditch-btn" class="btn btn-gold">⚡ Quidditch</button>
                 <button id="dictionary-btn" class="btn btn-gold">📖 Dictionary</button>
                 <button id="library-btn" class="btn btn-gold">📚 Library</button>
+                <button id="questions-btn" class="btn btn-gold">❓ Questions</button>
                 <button id="magic-shop-btn" class="btn btn-gold">🛍️ Magic Shop</button>
                 <button id="dueling-club-btn" class="btn btn-gold">⚔️ Dueling Club</button>
                 <button id="cast-spell-btn" class="btn btn-gold" disabled>🔮 Cast Spell</button>
@@ -538,6 +539,9 @@
     </div>
     <div id="quidditch-modal" class="modal-backdrop">
         <div id="quidditch-modal-content" class="modal-content !max-w-4xl !max-h-[95vh]"></div>
+    </div>
+    <div id="questions-modal" class="modal-backdrop">
+        <div id="questions-modal-content" class="modal-content !max-w-4xl"></div>
     </div>
     
     <!-- Reading Mode Container -->
@@ -732,7 +736,7 @@ onAuthStateChanged(auth, (user) => {
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "24.13 Final Touches", // Updated version
+    VERSION: "24.15 Homework System", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -830,6 +834,7 @@ const App = {
         Library.app = this;
         Dictionary.app = this;
         Quidditch.app = this;
+        DiscussionQuestions.app = this;
     },
 
     // ==== EVENT BINDING ====
@@ -851,6 +856,7 @@ const App = {
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
         document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
+        document.getElementById('questions-btn').addEventListener('click', () => DiscussionQuestions.open());
         
         // Event delegation for student list actions
         document.getElementById('student-list-container').addEventListener('click', (e) => {
@@ -863,7 +869,9 @@ const App = {
         // Global listener for Escape key
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
-                 if (document.getElementById('quidditch-modal').classList.contains('show')) {
+                 if (document.getElementById('questions-modal').classList.contains('show')) {
+                    DiscussionQuestions.close();
+                } else if (document.getElementById('quidditch-modal').classList.contains('show')) {
                     Quidditch.closeGame();
                 } else if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
                     Library.exitReadingMode();
@@ -1428,6 +1436,9 @@ const App = {
                 <div><strong>MP:</strong> ${student.mp} / ${this.DEFAULT_MP}</div>
                 <div><strong>Traits:</strong> ${house.traits}</div>
             </div>
+            <div class="mt-4">
+                <button class="btn btn-gold w-full" onclick="DiscussionQuestions.showStudentHomework('${studentName}')">🎓 View Homework</button>
+            </div>
             <hr class="my-4 border-gray-600">
             <h5 class="font-bold mb-2">🎒 Inventory</h5>
             <div class="space-y-1 mb-2">${inventoryHTML}</div>
@@ -1801,6 +1812,248 @@ const App = {
 };
 
 window.App = App;
+
+// =================================================================================
+// DISCUSSION QUESTIONS MODULE (REVISED FOR HOMEWORK)
+// =================================================================================
+const DiscussionQuestions = {
+    app: null,
+    
+    CHAPTER_QUESTIONS: {
+        "chapter1": {
+            "title": "The Boy Who Lived",
+            "houses": {
+                "Gryffindor": {
+                    "traits": "Bravery, Courage, Daring",
+                    "questions": [
+                        "Do you think it was brave of Professor McGonagall to confront Dumbledore about leaving Harry with the Dursleys? Why or why not?",
+                        "If you were in Hagrid’s place, would you have dared to fly with baby Harry on a motorcycle through the night?",
+                        "Was Dumbledore brave to leave Harry in a “normal” family instead of keeping him in the wizarding world?",
+                        "Have you ever had to make a brave choice for the good of someone else?"
+                    ]
+                },
+                "Ravenclaw": {
+                    "traits": "Wisdom, Curiosity, Intelligence",
+                    "questions": [
+                        "Why do you think Dumbledore trusted the Dursleys with Harry despite knowing their attitude?",
+                        "What can we learn about the wizarding world from the way wizards celebrate Voldemort’s fall in this chapter?",
+                        "What details in the chapter give us clues about how magical and non-magical worlds are different?",
+                        "If you could ask Dumbledore one question after reading this chapter, what would it be?"
+                    ]
+                },
+                "Hufflepuff": {
+                    "traits": "Loyalty, Kindness, Fairness",
+                    "questions": [
+                        "How do you feel about the way the Dursleys treated Harry’s parents’ memory? Was it fair?",
+                        "Was it kind of Dumbledore to leave Harry with relatives, even if they didn’t want him?",
+                        "How does Hagrid show loyalty to Dumbledore in this chapter?",
+                        "Do you think family is about blood ties or about love and care? Why?"
+                    ]
+                },
+                "Slytherin": {
+                    "traits": "Ambition, Cunning, Resourcefulness",
+                    "questions": [
+                        "If you were in Dumbledore’s position, how would you make sure Harry’s identity remained secret and safe?",
+                        "Do you think Voldemort’s ambition was the main reason for his downfall? Why or why not?",
+                        "What do you think Petunia gained from pretending that the Potters didn’t exist?",
+                        "If you had Harry’s fame from the very beginning, how would you use it to your advantage?"
+                    ]
+                }
+            }
+        }
+        // Add more chapters here, e.g., "chapter2": { ... }
+    },
+
+    open() {
+        const modal = document.getElementById('questions-modal');
+        const modalContent = modal.querySelector('#questions-modal-content');
+
+        const chaptersHTML = Object.entries(this.CHAPTER_QUESTIONS).map(([id, chapter]) => `
+            <div class="book-card bg-[#0C1C33] p-4 rounded-lg flex items-center justify-between mb-4" onclick="DiscussionQuestions.openChapter('${id}')">
+                <h4 class="font-bold text-lg text-yellow-300 cursor-pointer">${chapter.title}</h4>
+                <button class="btn btn-gold">
+                    <span class="mr-1">✍️</span> Answer
+                </button>
+            </div>
+        `).join('');
+
+        modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DiscussionQuestions.close()">&times;</span>
+            <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">Homework Assignments</h3>
+            <div class="max-h-[75vh] overflow-y-auto pr-2">
+                ${chaptersHTML}
+            </div>
+        `;
+
+        modal.classList.add('show');
+    },
+
+    async openChapter(chapterId) {
+        if (!this.app.currentPlayerName) {
+            this.app.showNotification("You must be linked to a student to answer questions.", "error");
+            return;
+        }
+        const modalContent = document.getElementById('questions-modal-content');
+        modalContent.innerHTML = `<div class="flex justify-center items-center h-48"><div class="spinner"></div></div>`;
+
+        const chapterData = this.CHAPTER_QUESTIONS[chapterId];
+        const studentAnswers = await this.loadAnswers(chapterId);
+
+        let contentHTML = '';
+        for (const houseName in chapterData.houses) {
+            const houseQuestions = chapterData.houses[houseName];
+            const houseInfo = this.app.HOUSES[houseName];
+
+            const questionsHTML = houseQuestions.questions.map((q, index) => {
+                const answerKey = `${houseName}_${index}`;
+                const savedAnswer = studentAnswers[answerKey] || '';
+                return `
+                <div class="mb-4">
+                    <p class="mb-2 pl-4 border-l-2 border-gray-600/50 text-gray-300">${q}</p>
+                    <textarea id="answer-${chapterId}-${houseName}-${index}" class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568] text-white h-24" placeholder="Your answer...">${savedAnswer}</textarea>
+                    <div class="text-right mt-1">
+                        <button class="btn btn-gold text-sm" onclick="DiscussionQuestions.saveAnswer('${chapterId}', '${houseName}', ${index})">Save Answer</button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            contentHTML += `
+                <div class="mb-4 bg-[#0C1C33] p-5 rounded-lg border border-[#3D5568]">
+                    <h4 class="font-magic-header text-2xl mb-3 flex items-center gap-3" style="color: ${houseInfo.color};">
+                        <span class="text-3xl">${houseInfo.animal}</span>
+                        <span>${houseName}</span>
+                    </h4>
+                    ${questionsHTML}
+                </div>
+            `;
+        }
+
+        modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DiscussionQuestions.open()">&times;</span>
+            <button class="btn bg-gray-600 mb-4" onclick="DiscussionQuestions.open()">← Back to Chapters</button>
+            <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">${chapterData.title}</h3>
+            <div class="max-h-[70vh] overflow-y-auto pr-2">
+                ${contentHTML}
+            </div>
+        `;
+    },
+
+    async saveAnswer(chapterId, houseName, questionIndex) {
+        const textarea = document.getElementById(`answer-${chapterId}-${houseName}-${questionIndex}`);
+        const answerText = textarea.value.trim();
+        if (!answerText) {
+            this.app.showNotification("Answer cannot be empty.", "error");
+            return;
+        }
+
+        if (!this.app.userId) {
+            this.app.showNotification("You are not logged in.", "error");
+            return;
+        }
+
+        const answerKey = `${houseName}_${questionIndex}`;
+        const docRef = doc(this.app.db, "homework", this.app.userId, "answers", chapterId);
+
+        try {
+            await setDoc(docRef, { [answerKey]: answerText }, { merge: true });
+            this.app.showNotification("Answer saved successfully!", "success");
+        } catch (error) {
+            console.error("Error saving answer:", error);
+            this.app.showNotification("Could not save your answer.", "error");
+        }
+    },
+
+    async loadAnswers(chapterId) {
+        if (!this.app.userId) return {};
+        try {
+            const docRef = doc(this.app.db, "homework", this.app.userId, "answers", chapterId);
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? docSnap.data() : {};
+        } catch (error) {
+            console.error("Error loading answers:", error);
+            return {};
+        }
+    },
+
+    async showStudentHomework(studentName) {
+        const student = this.app.studentData[studentName];
+        if (!student || !student.authUid) {
+            this.app.showNotification("This student account is not linked to a login. Cannot retrieve homework.", "error");
+            return;
+        }
+
+        this.app.closeModal(); // Close the profile modal first
+        const questionsModal = document.getElementById('questions-modal');
+        const modalContent = questionsModal.querySelector('#questions-modal-content');
+        modalContent.innerHTML = `<div class="flex justify-center items-center h-48"><div class="spinner"></div></div>`;
+        questionsModal.classList.add('show');
+
+        try {
+            const answersCollectionRef = collection(this.app.db, "homework", student.authUid, "answers");
+            const querySnapshot = await getDocs(answersCollectionRef);
+            
+            if (querySnapshot.empty) {
+                modalContent.innerHTML = `
+                    <span class="modal-close-btn" onclick="DiscussionQuestions.close()">&times;</span>
+                    <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">${studentName}'s Homework</h3>
+                    <p class="text-center text-gray-400">This student has not submitted any homework yet.</p>
+                `;
+                return;
+            }
+
+            let homeworkHTML = '';
+            for (const doc of querySnapshot.docs) {
+                const chapterId = doc.id;
+                const answers = doc.data();
+                const chapterData = this.CHAPTER_QUESTIONS[chapterId];
+                if (!chapterData) continue;
+
+                let chapterAnswersHTML = '';
+                for (const answerKey in answers) {
+                    const [houseName, questionIndex] = answerKey.split('_');
+                    const questionText = chapterData.houses[houseName]?.questions[questionIndex];
+                    if (questionText) {
+                        chapterAnswersHTML += `
+                            <div class="mb-4">
+                                <p class="mb-1 pl-3 border-l-2 border-gray-500 text-gray-400 italic">Q: ${questionText}</p>
+                                <p class="p-2 bg-[#2A3B4D] rounded text-white">A: ${answers[answerKey]}</p>
+                            </div>
+                        `;
+                    }
+                }
+
+                if(chapterAnswersHTML) {
+                    homeworkHTML += `
+                        <div class="mb-4 bg-[#0C1C33] p-5 rounded-lg border border-[#3D5568]">
+                            <h4 class="font-magic-header text-2xl mb-3 text-yellow-300">${chapterData.title}</h4>
+                            ${chapterAnswersHTML}
+                        </div>
+                    `;
+                }
+            }
+
+            modalContent.innerHTML = `
+                <span class="modal-close-btn" onclick="DiscussionQuestions.close()">&times;</span>
+                <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">${studentName}'s Homework</h3>
+                <div class="max-h-[70vh] overflow-y-auto pr-2">
+                    ${homeworkHTML || '<p class="text-center text-gray-400">No valid homework answers found.</p>'}
+                </div>
+            `;
+
+        } catch (error) {
+            console.error("Error fetching student homework:", error);
+            this.app.showNotification("Could not retrieve homework.", "error");
+            modalContent.innerHTML = `<p class="text-red-400">Error loading homework.</p>`;
+        }
+    },
+
+    close() {
+        document.getElementById('questions-modal').classList.remove('show');
+    }
+};
+window.DiscussionQuestions = DiscussionQuestions;
+
 
 // =================================================================================
 // DICTIONARY MODULE

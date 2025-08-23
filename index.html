@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hogwarts House Cup Tracker</title>
-    <!-- Lightning Bolt Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&family=IM+Fell+English&family=Merriweather&family=Lora&family=Playfair+Display&family=EB+Garamond&family=Roboto+Slab&family=Lato&family=Open+Sans&family=Cormorant+Garamond&family=Alegreya&family=Uncial+Antiqua&display=swap" rel="stylesheet">
@@ -380,15 +379,12 @@
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
 
-    <!-- Animated Background -->
     <canvas id="animated-bg"></canvas>
 
-    <!-- Authentication Container -->
     <div id="auth-container" class="min-h-screen flex items-center justify-center">
         <div class="bg-[#1A2B3C] p-8 rounded-lg shadow-lg w-full max-w-md border-t-4 border-[#FFD700]">
             <h2 class="font-magic-title text-3xl text-center text-[#FFD700] mb-6">Hogwarts Login</h2>
             
-            <!-- Login Form -->
             <form id="login-form">
                 <div class="mb-4">
                     <label for="login-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label>
@@ -401,7 +397,6 @@
                 <button type="submit" class="btn btn-gold w-full">Login</button>
             </form>
 
-            <!-- Registration Form -->
             <form id="register-form" style="display: none;">
                 <div class="mb-4">
                     <label for="register-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label>
@@ -423,13 +418,10 @@
         </div>
     </div>
 
-    <!-- Main Application Container (hidden by default) -->
     <div id="app-container" class="p-4 md:p-8 max-w-7xl mx-auto" style="display: none;">
         
-        <!-- Header -->
         <header class="bg-[#1A2B3C] p-4 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#FFD700] glow">
             <div class="flex items-center gap-4 mb-4 md:mb-0">
-                <!-- Logo Uploader -->
                 <div class="relative group cursor-pointer">
                     <img id="school-logo" src="https://placehold.co/80x80/0C1C33/FFD700?text=LOGO" alt="School Logo" class="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-[#FFD700] object-cover transition-opacity group-hover:opacity-70">
                     <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -459,17 +451,13 @@
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Houses and Actions -->
             <div class="lg:col-span-1 space-y-8">
-                <!-- House Points -->
                 <section class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
-                    <h2 class="text-2xl font-magic-header text-center text-[#FFD700] mb-6">House Cup</h2>
-                    <div id="house-points-container" class="space-y-4">
-                        <!-- Dynamic house insertion -->
-                    </div>
+                    <h2 class="text-2xl font-magic-header text-center text-[#FFD700] mb-6">House Cup Standings</h2>
+                    <div id="house-points-container">
+                        </div>
                 </section>
 
-                <!-- Admin Controls -->
                 <section id="admin-controls" class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
                     <h2 class="text-2xl font-magic-header text-center text-[#FFD700] mb-6">Control Panel</h2>
                     <div class="grid grid-cols-2 gap-4">
@@ -489,7 +477,6 @@
                 </section>
             </div>
 
-            <!-- Right Column: Students and History -->
             <div class="lg:col-span-2">
                 <section class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-4">
@@ -499,19 +486,15 @@
                         </div>
                     </div>
                     
-                    <!-- Student Groups Container -->
                     <div id="student-groups-container" class="bg-[#0C1C33] p-4 rounded-md h-[30rem] overflow-y-auto space-y-6">
-                        <!-- Dynamic student group insertion -->
-                    </div>
+                        </div>
                 </section>
             </div>
         </main>
     </div>
 
-    <!-- Spell Effects Container -->
     <div id="spell-effect-container" class="fixed top-0 left-0 w-full h-full pointer-events-none z-50"></div>
 
-    <!-- Modals -->
     <div id="modal" class="modal-backdrop">
         <div id="modal-content" class="modal-content"></div>
     </div>
@@ -537,19 +520,16 @@
         <div id="questions-modal-content" class="modal-content !max-w-4xl"></div>
     </div>
     
-    <!-- Reading Mode Container -->
     <div id="reading-mode-container" class="reading-mode hidden">
         <div class="reading-mode-main">
             <div id="reading-mode-content" class="parchment p-8 rounded-lg overflow-y-auto">
-                <!-- Content will be injected here -->
-            </div>
+                </div>
             <div class="reading-mode-toolbar mt-4 text-center">
                 <button id="exit-reading-mode-btn" class="btn btn-gold">Exit Reading Mode</button>
             </div>
         </div>
         <div id="reading-mode-dictionary" class="reading-mode-dictionary rounded-lg p-4">
-            <!-- Dictionary will be injected here -->
-        </div>
+            </div>
     </div>
 
 <script>
@@ -729,7 +709,7 @@ onAuthStateChanged(auth, (user) => {
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "24.19 Group Management", // Updated version
+    VERSION: "24.20 Quidditch & UI Update", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -1038,25 +1018,37 @@ const App = {
     updateHousePointsDisplay() {
         const container = document.getElementById('house-points-container');
         if (!this.HOUSES) return;
-        container.innerHTML = '';
-        const maxPoints = Math.max(1, ...Object.values(this.HOUSES).map(h => h.points));
 
-        for (const houseName in this.HOUSES) {
-            const house = this.HOUSES[houseName];
-            const percentage = house.points > 0 ? (house.points / maxPoints) * 100 : 0;
-            
+        // NEW: Get sorted houses to determine rank
+        const sortedHouses = Object.entries(this.HOUSES).sort(([, a], [, b]) => b.points - a.points);
+        
+        // NEW: Use grid for layout
+        container.className = 'grid grid-cols-2 gap-4';
+        container.innerHTML = ''; // Clear previous content
+
+        sortedHouses.forEach(([houseName, house], index) => {
+            const rank = index + 1;
+            let rankIndicator = '';
+            if (rank === 1 && house.points > 0) {
+                rankIndicator = `<div class="absolute top-0 right-0 -mt-3 -mr-3 px-2 py-1 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full shadow-lg">1st</div>`;
+            }
+
             const houseEl = document.createElement('div');
+            houseEl.className = 'relative p-4 rounded-lg shadow-lg flex flex-col items-center justify-center transition-transform transform hover:scale-105';
+            // Use house colors for background/border
+            houseEl.style.backgroundColor = house.color;
+            houseEl.style.border = `2px solid ${house.secondary}`;
+            // Use a dark/light text color based on the background for better contrast
+            const textColor = (houseName === 'Hufflepuff') ? 'text-black' : 'text-white';
+
             houseEl.innerHTML = `
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-lg" style="color: ${house.color};">${house.animal} ${houseName}</span>
-                    <span class="font-bold text-xl text-[#FFD700]">${house.points}</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-bar-inner" style="width: ${percentage}%; background-color: ${house.color};"></div>
-                </div>
+                ${rankIndicator}
+                <div class="text-5xl mb-2">${house.animal}</div>
+                <h3 class="font-bold text-lg ${textColor} font-magic-header">${houseName}</h3>
+                <p class="font-black text-4xl ${textColor}" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${house.points}</p>
             `;
             container.appendChild(houseEl);
-        }
+        });
     },
 
     updateStudentGroupsDisplay() {
@@ -3596,7 +3588,7 @@ const Quidditch = {
     isProcessing: false,
     chatHistory: [],
     gameState: {},
-    GROQ_API_KEY: null, // REMOVED hardcoded key
+    GROQ_API_KEY: null,
 
     openGame() {
         const modal = document.getElementById('quidditch-modal');
@@ -3614,6 +3606,7 @@ const Quidditch = {
     },
 
     renderApiKeySetup(container) {
+        const currentKey = this.GROQ_API_KEY || '';
         container.innerHTML = `
             <span class="modal-close-btn" onclick="Quidditch.closeGame()">&times;</span>
             <div class="flex flex-col items-center justify-center h-full">
@@ -3621,8 +3614,8 @@ const Quidditch = {
                 <p class="text-center my-4 text-gray-300">To power the magical commentary box, please provide your Groq API key. This is a free key you can get from the Groq website.</p>
                 <div class="w-full max-w-md">
                     <label for="groq-api-key" class="block mb-2 text-sm font-medium text-gray-300">Your Groq API Key</label>
-                    <input type="password" id="groq-api-key" placeholder="gsk_..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568]">
-                    <button class="btn btn-gold w-full mt-4" onclick="Quidditch.saveApiKey()">Save Key & Start Game</button>
+                    <input type="password" id="groq-api-key" placeholder="gsk_..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568]" value="${currentKey}">
+                    <button class="btn btn-gold w-full mt-4" onclick="Quidditch.saveApiKey()">Save API Key</button>
                     <a href="https://console.groq.com/keys" target="_blank" class="block text-center mt-2 text-sm text-[#FFD700] hover:underline">Get a Groq API Key</a>
                 </div>
             </div>
@@ -3635,9 +3628,8 @@ const Quidditch = {
         if (key) {
             localStorage.setItem('groqApiKey', key);
             this.GROQ_API_KEY = key;
-            const modalContent = document.getElementById('quidditch-modal-content');
-            this.renderGameUI(modalContent);
-            this.startGame();
+            this.app.showNotification("API Key saved!", "success");
+            this.openGame();
         } else {
             this.app.showNotification("Please enter a valid API key.", "error");
         }
@@ -3649,17 +3641,16 @@ const Quidditch = {
             <div class="flex flex-col h-[85vh]">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-magic-header text-3xl text-center text-[#FFD700]">Quidditch Match</h3>
-                    <div id="quidditch-scoreboard" class="font-bold text-xl text-white"></div>
+                    <div class="flex items-center gap-2">
+                         <div id="quidditch-scoreboard" class="font-bold text-xl text-white"></div>
+                         <button class="btn bg-gray-600 text-xs p-2" onclick="Quidditch.renderApiKeySetup(document.getElementById('quidditch-modal-content'))" title="Change API Key">⚙️</button>
+                    </div>
                 </div>
                 
-                <!-- Chat/Narrative Display -->
                 <div id="quidditch-chat-display" class="flex-grow bg-[#0C1C33] p-4 rounded-lg border border-[#3D5568] mb-4 overflow-y-auto flex flex-col">
-                    <!-- Messages will be injected here -->
-                </div>
+                    </div>
                 
-                <!-- Player Controls -->
                 <div class="flex-shrink-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Action Buttons -->
                     <div class="md:col-span-1 space-y-2">
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Try to score with the Quaffle')">Score with Quaffle</button>
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Search for the Golden Snitch')">Search for Snitch</button>
@@ -3667,7 +3658,6 @@ const Quidditch = {
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Defend the goalposts')">Defend Goals</button>
                     </div>
                     
-                    <!-- Custom Action & Dice -->
                     <div class="md:col-span-2 bg-[#1A2B3C] p-4 rounded-lg border border-[#3D5568] flex flex-col justify-between">
                         <input type="text" id="quidditch-custom-action" placeholder="Or type your own action..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568] mb-2">
                         <div class="flex items-center justify-between">
@@ -3749,7 +3739,7 @@ Gwenog: "Textbook form. They see the opening, they take the shot... GOAL! A fant
     updateScoreboard() {
         const scoreboard = document.getElementById('quidditch-scoreboard');
         if (scoreboard) {
-            scoreboard.innerHTML = `YOU: ${this.gameState.score.player} - OPPONENT: ${this.gameState.score.opponent}`;
+            scoreboard.innerHTML = `YOU: ${this.gameState.score.player} - OPP: ${this.gameState.score.opponent}`;
         }
     },
 

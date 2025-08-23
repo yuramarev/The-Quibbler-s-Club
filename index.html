@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hogwarts House Cup Tracker</title>
+    <!-- Lightning Bolt Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&family=MedievalSharp&family=IM+Fell+English&family=Merriweather&family=Lora&family=Playfair+Display&family=EB+Garamond&family=Roboto+Slab&family=Lato&family=Open+Sans&family=Cormorant+Garamond&family=Alegreya&family=Uncial+Antiqua&display=swap" rel="stylesheet">
@@ -30,7 +31,7 @@
         ::-webkit-scrollbar-thumb { background-color: #3D5568; border-radius: 20px; border: 3px solid #1A2B3C; }
         ::-webkit-scrollbar-thumb:hover { background-color: #FFD700; }
         .progress-bar { background-color: #2A3B4D; border-radius: 9999px; overflow: hidden; border: 1px solid #4A5B6D; }
-        .progress-bar-inner { height: 100%; border-radius: 9999px; transition: width 0.5s ease-in-out; text-align: center; color: white; font-weight: bold; }
+        .progress-bar-inner { height: 100%; border-radius: 9999px; transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out; text-align: center; color: white; font-weight: bold; }
         .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
         .modal-backdrop.show { opacity: 1; visibility: visible; }
         .modal-content { 
@@ -375,16 +376,93 @@
             from { box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #FFD700, 0 0 20px #FFD700; }
             to { box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #FFD700, 0 0 40px #FFD700; }
         }
+        
+        /* Dictionary Training Styles */
+        .training-hub-card {
+            background-color: #0C1C33;
+            border: 1px solid #3D5568;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .training-hub-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: #FFD700;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+        }
+        .training-game-option {
+            transition: all 0.2s ease;
+            border: 2px solid #3D5568;
+        }
+        .training-game-option:hover:not(:disabled) {
+            border-color: #FFD700;
+            background-color: #2A3B4D;
+        }
+        .training-game-option.correct {
+            background-color: #2A623D !important;
+            border-color: #34D399 !important;
+            transform: scale(1.05);
+        }
+        .training-game-option.incorrect {
+            background-color: #AE0001 !important;
+            border-color: #F87171 !important;
+            opacity: 0.7;
+        }
+        .letter-tile {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .letter-tile:hover {
+            background-color: #FFD700;
+            color: #0C1C33;
+        }
+        .word-card {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .word-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .word-card.is-flipped .word-card-inner {
+            transform: rotateY(180deg);
+        }
+        .word-card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 2px solid #FFD700;
+        }
+        .word-card-front {
+            background-color: #2A3B4D;
+        }
+        .word-card-back {
+            background-color: #0C1C33;
+            transform: rotateY(180deg);
+        }
     </style>
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
 
+    <!-- Animated Background -->
     <canvas id="animated-bg"></canvas>
 
+    <!-- Authentication Container -->
     <div id="auth-container" class="min-h-screen flex items-center justify-center">
         <div class="bg-[#1A2B3C] p-8 rounded-lg shadow-lg w-full max-w-md border-t-4 border-[#FFD700]">
             <h2 class="font-magic-title text-3xl text-center text-[#FFD700] mb-6">Hogwarts Login</h2>
             
+            <!-- Login Form -->
             <form id="login-form">
                 <div class="mb-4">
                     <label for="login-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label>
@@ -397,6 +475,7 @@
                 <button type="submit" class="btn btn-gold w-full">Login</button>
             </form>
 
+            <!-- Registration Form -->
             <form id="register-form" style="display: none;">
                 <div class="mb-4">
                     <label for="register-email" class="block mb-2 text-sm font-medium text-gray-300">Email</label>
@@ -418,10 +497,13 @@
         </div>
     </div>
 
+    <!-- Main Application Container (hidden by default) -->
     <div id="app-container" class="p-4 md:p-8 max-w-7xl mx-auto" style="display: none;">
         
+        <!-- Header -->
         <header class="bg-[#1A2B3C] p-4 rounded-lg shadow-lg mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#FFD700] glow">
             <div class="flex items-center gap-4 mb-4 md:mb-0">
+                <!-- Logo Uploader -->
                 <div class="relative group cursor-pointer">
                     <img id="school-logo" src="https://placehold.co/80x80/0C1C33/FFD700?text=LOGO" alt="School Logo" class="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-[#FFD700] object-cover transition-opacity group-hover:opacity-70">
                     <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -431,7 +513,7 @@
                 <input type="file" id="logo-upload" class="hidden" accept="image/*">
 
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-magic-title text-[#FFD700]">Hogwarts House Cup Tracker</h1>
+                    <h1 class="text-2xl md:text-3xl font-magic-title text-[#FFD700]">Hogwarts Tracker</h1>
                     <p id="app-version" class="text-sm text-[#C0C0C0]"></p>
                 </div>
             </div>
@@ -440,6 +522,7 @@
                     User: <span id="user-display" class="font-bold text-white"></span>
                  </div>
                 <button id="quidditch-btn" class="btn btn-gold">⚡ Quidditch</button>
+                <button id="dictionary-training-btn" class="btn btn-gold">🧠 Train Words</button>
                 <button id="dictionary-btn" class="btn btn-gold">📖 Dictionary</button>
                 <button id="library-btn" class="btn btn-gold">📚 Library</button>
                 <button id="questions-btn" class="btn btn-gold">❓ Questions</button>
@@ -451,13 +534,17 @@
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Houses and Actions -->
             <div class="lg:col-span-1 space-y-8">
+                <!-- House Points -->
                 <section class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
                     <h2 class="text-2xl font-magic-header text-center text-[#FFD700] mb-6">House Cup Standings</h2>
                     <div id="house-points-container">
-                        </div>
+                        <!-- Dynamic house insertion -->
+                    </div>
                 </section>
 
+                <!-- Admin Controls -->
                 <section id="admin-controls" class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
                     <h2 class="text-2xl font-magic-header text-center text-[#FFD700] mb-6">Control Panel</h2>
                     <div class="grid grid-cols-2 gap-4">
@@ -477,6 +564,7 @@
                 </section>
             </div>
 
+            <!-- Right Column: Students and History -->
             <div class="lg:col-span-2">
                 <section class="bg-[#1A2B3C] p-6 rounded-lg shadow-lg">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-4">
@@ -486,15 +574,19 @@
                         </div>
                     </div>
                     
+                    <!-- Student Groups Container -->
                     <div id="student-groups-container" class="bg-[#0C1C33] p-4 rounded-md h-[30rem] overflow-y-auto space-y-6">
-                        </div>
+                        <!-- Dynamic student group insertion -->
+                    </div>
                 </section>
             </div>
         </main>
     </div>
 
+    <!-- Spell Effects Container -->
     <div id="spell-effect-container" class="fixed top-0 left-0 w-full h-full pointer-events-none z-50"></div>
 
+    <!-- Modals -->
     <div id="modal" class="modal-backdrop">
         <div id="modal-content" class="modal-content"></div>
     </div>
@@ -519,17 +611,26 @@
     <div id="questions-modal" class="modal-backdrop">
         <div id="questions-modal-content" class="modal-content !max-w-4xl"></div>
     </div>
+    <div id="dictionary-training-modal" class="modal-backdrop">
+        <div id="dictionary-training-content" class="modal-content !max-w-4xl"></div>
+    </div>
+    <div id="training-game-modal" class="modal-backdrop">
+        <div id="training-game-content" class="modal-content !max-w-2xl"></div>
+    </div>
     
+    <!-- Reading Mode Container -->
     <div id="reading-mode-container" class="reading-mode hidden">
         <div class="reading-mode-main">
             <div id="reading-mode-content" class="parchment p-8 rounded-lg overflow-y-auto">
-                </div>
+                <!-- Content will be injected here -->
+            </div>
             <div class="reading-mode-toolbar mt-4 text-center">
                 <button id="exit-reading-mode-btn" class="btn btn-gold">Exit Reading Mode</button>
             </div>
         </div>
         <div id="reading-mode-dictionary" class="reading-mode-dictionary rounded-lg p-4">
-            </div>
+            <!-- Dictionary will be injected here -->
+        </div>
     </div>
 
 <script>
@@ -709,7 +810,7 @@ onAuthStateChanged(auth, (user) => {
 
 const App = {
     // ==== MAGICAL CONFIGURATION ====
-    VERSION: "24.20 Quidditch & UI Update", // Updated version
+    VERSION: "24.22 Dictionary Training Complete", // Updated version
     ADMIN_UID: "AbgIydNv7Vd0hOTGI6GHYOo2heA2", // <--- YOUR ADMIN UID
     HOUSES: {
         "Gryffindor": { points: 0, color: "#AE0001", secondary: "#FFDB00", animal: "🦁", traits: "Courage, Bravery, Chivalry" },
@@ -771,7 +872,8 @@ const App = {
         duel_hit: [600, 400], duel_miss: [300, 200], duel_block: [400, 400], shield_break: [300, 250, 200],
         heal_sound: [587, 698, 784], potion_use: [400, 500, 600], dice_roll: [200, 250, 300, 350, 400, 450, 500],
         crit_fail_sound: [400, 300, 200, 100],
-        open_book: [261, 329, 392], turn_page: [392, 440], add_word: [659, 784, 880]
+        open_book: [261, 329, 392], turn_page: [392, 440], add_word: [659, 784, 880],
+        correct_answer: [523, 659, 784, 1046], incorrect_answer: [349, 261]
     },
     
     // ==== APPLICATION STATE ====
@@ -815,6 +917,7 @@ const App = {
         Dictionary.app = this;
         Quidditch.app = this;
         DiscussionQuestions.app = this;
+        DictionaryTraining.app = this;
     },
 
     // ==== EVENT BINDING ====
@@ -836,6 +939,7 @@ const App = {
         document.getElementById('magic-shop-btn').addEventListener('click', () => Shop.open());
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
+        document.getElementById('dictionary-training-btn').addEventListener('click', () => DictionaryTraining.openHub());
         document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
         document.getElementById('questions-btn').addEventListener('click', () => DiscussionQuestions.open());
         
@@ -850,7 +954,11 @@ const App = {
         // Global listener for Escape key
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
-                 if (document.getElementById('questions-modal').classList.contains('show')) {
+                 if (document.getElementById('training-game-modal').classList.contains('show')) {
+                    DictionaryTraining.closeGame();
+                } else if (document.getElementById('dictionary-training-modal').classList.contains('show')) {
+                    document.getElementById('dictionary-training-modal').classList.remove('show');
+                } else if (document.getElementById('questions-modal').classList.contains('show')) {
                     DiscussionQuestions.close();
                 } else if (document.getElementById('quidditch-modal').classList.contains('show')) {
                     Quidditch.closeGame();
@@ -3647,10 +3755,14 @@ const Quidditch = {
                     </div>
                 </div>
                 
+                <!-- Chat/Narrative Display -->
                 <div id="quidditch-chat-display" class="flex-grow bg-[#0C1C33] p-4 rounded-lg border border-[#3D5568] mb-4 overflow-y-auto flex flex-col">
-                    </div>
+                    <!-- Messages will be injected here -->
+                </div>
                 
+                <!-- Player Controls -->
                 <div class="flex-shrink-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Action Buttons -->
                     <div class="md:col-span-1 space-y-2">
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Try to score with the Quaffle')">Score with Quaffle</button>
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Search for the Golden Snitch')">Search for Snitch</button>
@@ -3658,6 +3770,7 @@ const Quidditch = {
                         <button class="btn btn-gold w-full" onclick="Quidditch.performAction('Defend the goalposts')">Defend Goals</button>
                     </div>
                     
+                    <!-- Custom Action & Dice -->
                     <div class="md:col-span-2 bg-[#1A2B3C] p-4 rounded-lg border border-[#3D5568] flex flex-col justify-between">
                         <input type="text" id="quidditch-custom-action" placeholder="Or type your own action..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568] mb-2">
                         <div class="flex items-center justify-between">
@@ -3935,6 +4048,383 @@ Gwenog: "Textbook form. They see the opening, they take the shot... GOAL! A fant
     }
 };
 window.Quidditch = Quidditch;
+
+// =================================================================================
+// DICTIONARY TRAINING MODULE (IMPLEMENTED)
+// =================================================================================
+const DictionaryTraining = {
+    app: null,
+    gameActive: false,
+    currentWords: [],
+    score: 0,
+    currentIndex: 0,
+    timer: null,
+    
+    TRAINING_MODES: {
+        'word-translation': { name: 'Word-Translation', icon: '↔️', desc: 'Choose the correct word for the given definition.', minWords: 4 },
+        'word-constructor': { name: 'Word Constructor', icon: '🛠️', desc: 'Assemble the word from a scramble of letters.', minWords: 1 },
+        'sprint': { name: 'Sprint', icon: '🏃', desc: 'Quickly decide if the word and definition match.', minWords: 2 },
+        'word-cards': { name: 'Word Cards', icon: '🃏', desc: 'Review words with classic flashcards.', minWords: 1 },
+        'word-sprint': { name: 'Word Sprint (Brainstorm)', icon: '💨', desc: 'Type the correct word for the definition before time runs out.', minWords: 1 }
+    },
+
+    async openHub() {
+        if (!this.app.userId) {
+            this.app.showNotification("You must be logged in to train words.", "error");
+            return;
+        }
+        await Dictionary.loadUserWords(); // Ensure we have the latest words
+        const wordCount = Object.keys(Dictionary.userWords).length;
+
+        const modal = document.getElementById('dictionary-training-modal');
+        const modalContent = document.getElementById('dictionary-training-content');
+        
+        const hubHTML = Object.entries(this.TRAINING_MODES).map(([key, mode]) => {
+            const disabled = wordCount < mode.minWords;
+            return `
+                <div class="training-hub-card p-4 rounded-lg flex items-center gap-4 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" 
+                     onclick="${disabled ? '' : `DictionaryTraining.startGame('${key}')`}">
+                    <div class="text-5xl">${mode.icon}</div>
+                    <div>
+                        <h4 class="font-bold text-lg text-yellow-300">${mode.name}</h4>
+                        <p class="text-sm text-gray-300">${mode.desc}</p>
+                        ${disabled ? `<p class="text-xs text-red-400">Requires at least ${mode.minWords} words in your dictionary.</p>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        modalContent.innerHTML = `
+            <span class="modal-close-btn" onclick="document.getElementById('dictionary-training-modal').classList.remove('show')">&times;</span>
+            <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-2">Dictionary Training Grounds</h3>
+            <p class="text-center text-gray-400 mb-6">You have ${wordCount} words to practice. Choose your training method!</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                ${hubHTML}
+            </div>
+        `;
+        modal.classList.add('show');
+    },
+
+    startGame(gameType) {
+        this.gameActive = true;
+        this.score = 0;
+        this.currentIndex = 0;
+        this.currentWords = this.getWordsForTraining(20); // Limit to 20 words per session
+        
+        if (this.currentWords.length < this.TRAINING_MODES[gameType].minWords) {
+            this.app.showNotification("Not enough words for this training.", "error");
+            return;
+        }
+        
+        document.getElementById('dictionary-training-modal').classList.remove('show');
+        const gameModal = document.getElementById('training-game-modal');
+        gameModal.classList.add('show');
+        
+        const gameContent = document.getElementById('training-game-content');
+        gameContent.innerHTML = `<div class="flex justify-center items-center h-48"><div class="spinner"></div></div>`;
+        
+        switch(gameType) {
+            case 'word-translation': this.setupWordTranslation(); break;
+            case 'word-constructor': this.setupWordConstructor(); break;
+            case 'sprint': this.setupSprint(); break;
+            case 'word-cards': this.setupWordCards(); break;
+            case 'word-sprint': this.setupWordSprint(); break;
+        }
+    },
+
+    closeGame() {
+        this.gameActive = false;
+        if (this.timer) clearInterval(this.timer);
+        document.getElementById('training-game-modal').classList.remove('show');
+        this.openHub();
+    },
+    
+    // ==== Word Translation ====
+    setupWordTranslation() {
+        if (this.currentIndex >= this.currentWords.length) {
+            this.showGameResults();
+            return;
+        }
+        const gameContent = document.getElementById('training-game-content');
+        const currentWord = this.currentWords[this.currentIndex];
+        
+        const allWords = Object.keys(Dictionary.userWords);
+        let options = [currentWord.word];
+        while(options.length < 4) {
+            const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+            if (!options.includes(randomWord)) {
+                options.push(randomWord);
+            }
+        }
+        this.shuffleArray(options);
+        
+        const optionsHTML = options.map(opt => `
+            <button class="training-game-option p-4 rounded-lg text-lg capitalize" onclick="DictionaryTraining.checkWordTranslation(this, '${opt}', '${currentWord.word}')">${opt}</button>
+        `).join('');
+        
+        gameContent.innerHTML = `
+            <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
+            <p class="text-center text-gray-300 mb-4">Choose the word for this definition:</p>
+            <div class="bg-[#0C1C33] p-4 rounded-lg text-center min-h-[100px] flex items-center justify-center mb-6">
+                <p>"${currentWord.definition}"</p>
+            </div>
+            <div id="translation-options" class="grid grid-cols-2 gap-4">
+                ${optionsHTML}
+            </div>
+        `;
+    },
+
+    checkWordTranslation(button, selectedWord, correctWord) {
+        document.querySelectorAll('#translation-options button').forEach(b => b.disabled = true);
+        if (selectedWord === correctWord) {
+            this.score++;
+            button.classList.add('correct');
+            this.app.playSound(this.app.SOUNDS.correct_answer);
+        } else {
+            button.classList.add('incorrect');
+            this.app.playSound(this.app.SOUNDS.incorrect_answer);
+            // Highlight the correct one
+            document.querySelectorAll('#translation-options button').forEach(b => {
+                if (b.textContent === correctWord) b.classList.add('correct');
+            });
+        }
+        this.currentIndex++;
+        setTimeout(() => this.setupWordTranslation(), 1500);
+    },
+
+    // ==== Word Constructor ====
+    setupWordConstructor() {
+        if (this.currentIndex >= this.currentWords.length) {
+            this.showGameResults();
+            return;
+        }
+        const gameContent = document.getElementById('training-game-content');
+        const currentWord = this.currentWords[this.currentIndex];
+        const scrambled = currentWord.word.split('').sort(() => 0.5 - Math.random());
+        
+        const lettersHTML = scrambled.map((letter, index) => `
+            <button class="letter-tile bg-[#2A3B4D] p-3 rounded text-xl font-bold" data-index="${index}" onclick="DictionaryTraining.constructorAddLetter(this, '${letter}')">${letter}</button>
+        `).join('');
+
+        gameContent.innerHTML = `
+            <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
+            <div class="bg-[#0C1C33] p-4 rounded-lg text-center min-h-[80px] flex items-center justify-center mb-4">
+                <p>"${currentWord.definition}"</p>
+            </div>
+            <div id="constructor-answer" class="bg-[#0C1C33] p-4 rounded-lg h-16 mb-4 text-2xl tracking-widest text-center"></div>
+            <div id="constructor-letters" class="flex flex-wrap justify-center gap-2 mb-4">
+                ${lettersHTML}
+            </div>
+            <div class="flex justify-center gap-4">
+                <button class="btn bg-gray-600" onclick="DictionaryTraining.constructorClear()">Clear</button>
+                <button class="btn btn-gold" onclick="DictionaryTraining.checkWordConstructor()">Submit</button>
+            </div>
+        `;
+    },
+
+    constructorAddLetter(button, letter) {
+        const answerDiv = document.getElementById('constructor-answer');
+        answerDiv.textContent += letter;
+        button.disabled = true;
+        button.style.opacity = '0.3';
+    },
+
+    constructorClear() {
+        document.getElementById('constructor-answer').textContent = '';
+        document.querySelectorAll('#constructor-letters button').forEach(b => {
+            b.disabled = false;
+            b.style.opacity = '1';
+        });
+    },
+
+    checkWordConstructor() {
+        const answerDiv = document.getElementById('constructor-answer');
+        const userAnswer = answerDiv.textContent;
+        const correctWord = this.currentWords[this.currentIndex].word;
+
+        if (userAnswer === correctWord) {
+            this.score++;
+            answerDiv.classList.add('bg-green-800');
+            this.app.playSound(this.app.SOUNDS.correct_answer);
+        } else {
+            answerDiv.classList.add('bg-red-800');
+            this.app.playSound(this.app.SOUNDS.incorrect_answer);
+            answerDiv.textContent = correctWord; // Show correct answer
+        }
+        this.currentIndex++;
+        setTimeout(() => this.setupWordConstructor(), 1500);
+    },
+
+    // ==== Sprint ====
+    setupSprint() {
+        if (this.currentIndex >= this.currentWords.length) {
+            this.showGameResults();
+            return;
+        }
+        const gameContent = document.getElementById('training-game-content');
+        const currentWord = this.currentWords[this.currentIndex];
+        
+        const shouldMatch = Math.random() > 0.5;
+        let definitionToShow = '';
+        if (shouldMatch) {
+            definitionToShow = currentWord.definition;
+        } else {
+            const otherWords = this.currentWords.filter(w => w.word !== currentWord.word);
+            definitionToShow = otherWords[Math.floor(Math.random() * otherWords.length)].definition;
+        }
+
+        gameContent.innerHTML = `
+            <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
+            <div class="text-center">
+                <p class="text-4xl font-bold capitalize mb-4 text-yellow-300">${currentWord.word}</p>
+                <div class="bg-[#0C1C33] p-4 rounded-lg min-h-[100px] flex items-center justify-center mb-6">
+                    <p>"${definitionToShow}"</p>
+                </div>
+                <div id="sprint-feedback" class="h-8 mb-4"></div>
+                <div class="flex justify-center gap-4">
+                    <button class="btn btn-destructive text-lg px-8" onclick="DictionaryTraining.checkSprint(false, ${shouldMatch})">❌ Don't Match</button>
+                    <button class="btn bg-green-600 text-white text-lg px-8" onclick="DictionaryTraining.checkSprint(true, ${shouldMatch})">✔️ Match</button>
+                </div>
+            </div>
+        `;
+    },
+
+    checkSprint(userChoice, isMatch) {
+        const feedbackDiv = document.getElementById('sprint-feedback');
+        if (userChoice === isMatch) {
+            this.score++;
+            feedbackDiv.innerHTML = `<p class="text-green-400 font-bold text-2xl">Correct!</p>`;
+            this.app.playSound(this.app.SOUNDS.correct_answer);
+        } else {
+            feedbackDiv.innerHTML = `<p class="text-red-400 font-bold text-2xl">Incorrect!</p>`;
+            this.app.playSound(this.app.SOUNDS.incorrect_answer);
+        }
+        this.currentIndex++;
+        setTimeout(() => this.setupSprint(), 800);
+    },
+
+    // ==== Word Cards ====
+    setupWordCards() {
+        const gameContent = document.getElementById('training-game-content');
+        if (this.currentIndex < 0) this.currentIndex = 0;
+        if (this.currentIndex >= this.currentWords.length) this.currentIndex = this.currentWords.length - 1;
+
+        const currentWord = this.currentWords[this.currentIndex];
+
+        gameContent.innerHTML = `
+            <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length}</div>
+            <div class="word-card h-64" onclick="this.classList.toggle('is-flipped')">
+                <div class="word-card-inner">
+                    <div class="word-card-face word-card-front">
+                        <h3 class="text-4xl font-bold capitalize">${currentWord.word}</h3>
+                    </div>
+                    <div class="word-card-face word-card-back">
+                        <p class="text-center">${currentWord.definition}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-6">
+                <button class="btn bg-gray-600" onclick="DictionaryTraining.currentIndex--; DictionaryTraining.setupWordCards()">← Previous</button>
+                <button class="btn btn-gold" onclick="DictionaryTraining.closeGame()">Finish Review</button>
+                <button class="btn bg-gray-600" onclick="DictionaryTraining.currentIndex++; DictionaryTraining.setupWordCards()">Next →</button>
+            </div>
+        `;
+    },
+
+    // ==== Word Sprint (Brainstorm) ====
+    setupWordSprint() {
+        if (this.timer) clearInterval(this.timer);
+        if (this.currentIndex >= this.currentWords.length) {
+            this.showGameResults();
+            return;
+        }
+        const gameContent = document.getElementById('training-game-content');
+        const currentWord = this.currentWords[this.currentIndex];
+        let timeLeft = 15;
+
+        gameContent.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-sm">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
+                <div id="sprint-timer" class="font-bold text-lg text-yellow-300">${timeLeft}s</div>
+            </div>
+            <div class="bg-[#0C1C33] p-4 rounded-lg text-center min-h-[100px] flex items-center justify-center mb-4">
+                <p>"${currentWord.definition}"</p>
+            </div>
+            <input type="text" id="word-sprint-input" class="w-full bg-[#2A3B4D] rounded p-3 text-center text-xl border border-[#3D5568]" autocomplete="off">
+            <div id="word-sprint-feedback" class="h-8 mt-4 text-center"></div>
+        `;
+
+        const input = document.getElementById('word-sprint-input');
+        input.focus();
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.checkWordSprint();
+            }
+        });
+
+        const timerDiv = document.getElementById('sprint-timer');
+        this.timer = setInterval(() => {
+            timeLeft--;
+            timerDiv.textContent = `${timeLeft}s`;
+            if (timeLeft <= 5) timerDiv.classList.add('text-red-500');
+            if (timeLeft <= 0) {
+                this.checkWordSprint();
+            }
+        }, 1000);
+    },
+
+    checkWordSprint() {
+        if (this.timer) clearInterval(this.timer);
+        const input = document.getElementById('word-sprint-input');
+        input.disabled = true;
+        const userAnswer = input.value.trim().toLowerCase();
+        const correctWord = this.currentWords[this.currentIndex].word.toLowerCase();
+        const feedbackDiv = document.getElementById('word-sprint-feedback');
+
+        if (userAnswer === correctWord) {
+            this.score++;
+            feedbackDiv.innerHTML = `<p class="text-green-400 font-bold text-2xl">Correct!</p>`;
+            this.app.playSound(this.app.SOUNDS.correct_answer);
+        } else {
+            feedbackDiv.innerHTML = `<p class="text-red-400 font-bold text-2xl">Incorrect! The word was: <span class="capitalize">${correctWord}</span></p>`;
+            this.app.playSound(this.app.SOUNDS.incorrect_answer);
+        }
+        this.currentIndex++;
+        setTimeout(() => this.setupWordSprint(), 2000);
+    },
+    
+    // ==== UTILITY FUNCTIONS ====
+    getWordsForTraining(count) {
+        const allWords = Object.entries(Dictionary.userWords).map(([word, definition]) => ({ word, definition }));
+        this.shuffleArray(allWords);
+        return allWords.slice(0, count);
+    },
+
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    },
+    
+    showGameResults() {
+        const gameContent = document.getElementById('training-game-content');
+        const totalQuestions = this.currentWords.length;
+        const accuracy = totalQuestions > 0 ? Math.round((this.score / totalQuestions) * 100) : 0;
+        gameContent.innerHTML = `
+            <h3 class="font-magic-header text-2xl text-center text-[#FFD700] mb-4">Training Complete!</h3>
+            <p class="text-center text-5xl font-bold mb-4">${this.score}/${totalQuestions}</p>
+            <p class="text-center text-2xl text-yellow-300 mb-6">Accuracy: ${accuracy}%</p>
+            <div class="flex justify-center gap-4">
+                <button class="btn btn-gold" onclick="DictionaryTraining.closeGame()">Back to Hub</button>
+            </div>
+        `;
+        if (accuracy > 80) {
+            this.app.playSound(this.app.SOUNDS.celebration);
+        }
+    }
+};
+window.DictionaryTraining = DictionaryTraining;
 
 </script>
 </body>

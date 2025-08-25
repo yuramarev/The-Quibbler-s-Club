@@ -2403,6 +2403,9 @@ window.DiscussionQuestions = DiscussionQuestions;
 // =================================================================================
 // DICTIONARY MODULE
 // =================================================================================
+// =================================================================================
+// DICTIONARY MODULE (REVISED AND FIXED)
+// =================================================================================
 const Dictionary = {
     app: null,
     userWords: {},
@@ -2478,125 +2481,116 @@ const Dictionary = {
     },
     
     viewOnMerriamWebster(word) {
-        const url = `https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`;
+        const url = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(word)}`;
         window.open(url, '_blank');
     },
 
     async showDefinitionPopup(word) {
-        if (!this.app.userId) return;
-
         const modal = document.getElementById('definition-popup-modal');
         const modalContent = document.getElementById('definition-popup-content');
+        modal.classList.add('show');
 
         modalContent.innerHTML = `
             <span class="modal-close-btn" onclick="document.getElementById('definition-popup-modal').classList.remove('show')">&times;</span>
             <h3 class="font-magic-header text-2xl text-[#FFD700] mb-4 capitalize">${word}</h3>
-            <div id="definition-display" class="my-4 text-gray-300 min-h-[60px] flex justify-center items-center text-left">
-                <div class="spinner"></div>
-            </div>
-            <div id="definition-buttons" class="flex justify-end gap-4 mt-6">
-                 <button id="close-popup-btn" class="btn bg-gray-600 text-white">Close</button>
-                 <button class="btn bg-blue-600 text-white" onclick="Dictionary.viewOnMerriamWebster('${word}')">View on M-W</button>
-                 <button id="add-word-btn" class="btn btn-gold" disabled>Add to Dictionary</button>
-            </div>
-        `;
-        modal.classList.add('show');
-        modalContent.querySelector('#close-popup-btn').addEventListener('click', () => modal.classList.remove('show'));
-        
-        const definitionDisplay = modalContent.querySelector('#definition-display');
-        const addBtn = modalContent.querySelector('#add-word-btn');
-        
-        const definitionData = await this._fetchSimpleDefinition(word);
+            <div id="definition-display" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"><div class="flex justify-center p-4"><div class="spinner"></div></div></div>
+            <div class="flex justify-between mt-4">
+                <button class="btn bg-blue-600 text-white" onclick="Dictionary.viewOnMerriamWebster('${word}')">View on M-W</button>
+                <button class="btn btn-gold" id="save-definition" disabled>Save Selected</button>
+            </div>`;
 
-        if (definitionData) {
-            definitionDisplay.innerHTML = definitionData.html;
-            addBtn.disabled = false;
-            addBtn.onclick = () => {
-                this.saveWord(word, definitionData.plainText);
-                modal.classList.remove('show');
-            };
-        } else {
-            definitionDisplay.innerHTML = `Could not find a definition for "<strong>${word}</strong>".`;
-            addBtn.remove(); // Remove add button if no definition is found
+        const defs = await this._fetchDefinitions(word);
+        const display = modalContent.querySelector("#definition-display");
+        display.innerHTML = ''; // Clear spinner
+
+        if (defs.length > 0) {
+            defs.forEach((d) => {
+                const card = document.createElement('div');
+                card.className = "p-3 rounded border border-[#3D5568] bg-[#182635] hover:border-yellow-300 transition cursor-pointer";
+                card.innerHTML = `<p class="text-gray-200">${d.definition}</p>${d.example ? `<p class="text-gray-400 text-xs italic mt-1">${d.example}</p>` : ''}`;
+                card.addEventListener('click', () => {
+                    modalContent.querySelectorAll('#definition-display div.border-yellow-300').forEach(el => el.classList.remove('border-yellow-300', 'bg-[#2A3B4D]'));
+                    card.classList.add('border-yellow-300', 'bg-[#2A3B4D]');
+                    modalContent.querySelector("#save-definition").disabled = false;
+                    modalContent.querySelector("#save-definition").onclick = () => this.saveWord(word, d.definition);
+                });
+                display.appendChild(card);
+            });
+        }
+        
+        const custom = document.createElement('div');
+        custom.className = "p-3 rounded border border-dashed border-[#3D5568] bg-transparent mt-4";
+        custom.innerHTML = `<p class="text-yellow-300 mb-2 text-sm">${defs.length > 0 ? 'Or add your own custom definition:' : 'No definitions found. Please add your own:'}</p>
+            <textarea id="custom-def" class="w-full bg-[#2A3B4D] text-white p-2 rounded"></textarea>
+            <div class="text-right mt-2"><button class="btn btn-gold" onclick="Dictionary.saveCustom('${word}')">Save Custom</button></div>`;
+        display.appendChild(custom);
+    },
+
+    async _fetchDefinitions(word) {
+        try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.flatMap(entry => entry.meanings.flatMap(m => 
+                m.definitions.map(d => ({definition: d.definition, example: d.example||""})))).slice(0, 5);
+        } catch {
+            return [];
         }
     },
 
-    async _fetchSimpleDefinition(word) {
-        try {
-            const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-            if (!response.ok) return null;
-            const data = await response.json();
-            
-            const definitionEntry = data?.[0]?.meanings?.[0]?.definitions?.[0];
-            const definitionText = definitionEntry?.definition;
-
-            if (definitionText) {
-                const plainText = definitionText;
-                const html = `<p>${definitionText}</p>`;
-                return { html, plainText };
-            }
-            
-            return null;
-        } catch (error) {
-            console.error("Dictionary API failed:", error);
-            return null;
+    saveCustom(word) {
+        const text = document.getElementById('custom-def')?.value.trim();
+        if (!text) {
+            this.app.showNotification("Please enter a definition.", "error");
+            return;
         }
+        this.saveWord(word, text);
     },
 
     async saveWord(word, definition) {
-        if (!this.app.userId) {
-            this.app.showNotification("You must be logged in to add words.", "error");
-            return;
-        }
+        if (!this.app.userId) return;
         const cleanedWord = word.toLowerCase();
+
         if (this.userWords[cleanedWord]) {
             this.app.showNotification(`"${word}" is already in your dictionary.`, "info");
+            document.getElementById('definition-popup-modal').classList.remove('show');
             return;
         }
 
+        const docRef = doc(this.app.db, "dictionaries", this.app.userId);
         try {
-            const docRef = doc(this.app.db, "dictionaries", this.app.userId);
-            await setDoc(docRef, {
-                words: { [cleanedWord]: definition }
-            }, { merge: true });
-            
-            this.userWords[cleanedWord] = definition; // Update local cache
+            await setDoc(docRef, { words: { [cleanedWord]: definition } }, { merge: true });
+            this.userWords[cleanedWord] = definition;
             this.app.playSound(this.app.SOUNDS.add_word);
             this.app.showNotification(`Added "${word}" to your dictionary!`, "success");
-
-            // Refresh dictionary if in reading mode
-            if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
-                this.renderDictionary('reading-mode-dictionary');
-            }
-
-        } catch (error) {
-            console.error("Error saving word:", error);
-            this.app.showNotification("Failed to save word.", "error");
+            document.getElementById('definition-popup-modal').classList.remove('show');
+            this.refreshAllViews();
+        } catch (e) {
+            console.error("Firestore save error:", e);
+            this.app.showNotification("Error: Could not save word.", "error");
         }
     },
 
     async deleteWord(word) {
         if (!this.app.userId) return;
-
         const docRef = doc(this.app.db, "dictionaries", this.app.userId);
         try {
-            await updateDoc(docRef, {
-                [`words.${word}`]: deleteField()
-            });
-            delete this.userWords[word]; 
-            this.app.showNotification(`Removed "${word}" from your dictionary.`, 'success');
-            
-            // Re-render the correct dictionary view
-            if (document.getElementById('dictionary-modal').classList.contains('show')) {
-                this.renderDictionary();
-            }
-            if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
-                this.renderDictionary('reading-mode-dictionary');
-            }
-
-        } catch (error) {
-            console.error("Error deleting word:", error);
-            this.app.showNotification("Failed to delete word.", "error");
+            await updateDoc(docRef, { [`words.${word}`]: deleteField() });
+            delete this.userWords[word];
+            this.app.showNotification(`Removed "${word}" from your dictionary.`, "success");
+            this.refreshAllViews();
+        } catch (e) {
+            console.error("Firestore delete error:", e);
+            this.app.showNotification("Error: Could not delete word.", "error");
+        }
+    },
+    
+    refreshAllViews() {
+        if (document.getElementById('dictionary-modal').classList.contains('show')) {
+            this.renderDictionary();
+        }
+        if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
+            Dictionary.renderDictionary('reading-mode-dictionary');
         }
     }
 };
@@ -4061,7 +4055,7 @@ const DictionaryTraining = {
     timer: null,
     
     TRAINING_MODES: {
-        'word-translation': { name: 'Word-Translation', icon: '↔️', desc: 'Choose the correct word for the given definition.', minWords: 4 },
+        'word-translation': { name: 'Word-Definition', icon: '↔️', desc: 'Choose the correct word for the given definition.', minWords: 4 },
         'word-constructor': { name: 'Word Constructor', icon: '🛠️', desc: 'Assemble the word from a scramble of letters.', minWords: 1 },
         'sprint': { name: 'Sprint', icon: '🏃', desc: 'Quickly decide if the word and definition match.', minWords: 2 },
         'word-cards': { name: 'Word Cards', icon: '🃏', desc: 'Review words with classic flashcards.', minWords: 1 },

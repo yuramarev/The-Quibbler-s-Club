@@ -4239,6 +4239,7 @@ const DictionaryTraining = {
         `).join('');
         
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
             <p class="text-center text-gray-300 mb-4">Choose the word for this definition:</p>
             <div class="bg-[#0C1C33] p-4 rounded-lg text-center min-h-[100px] flex items-center justify-center mb-6">
@@ -4283,6 +4284,7 @@ const DictionaryTraining = {
         `).join('');
 
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
             <div class="bg-[#0C1C33] p-4 rounded-lg text-center min-h-[80px] flex items-center justify-center mb-4">
                 <p>"${currentWord.definition}"</p>
@@ -4350,6 +4352,7 @@ const DictionaryTraining = {
         }
 
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
             <div class="text-center">
                 <p class="text-4xl font-bold capitalize mb-4 text-yellow-300">${currentWord.word}</p>
@@ -4388,6 +4391,7 @@ const DictionaryTraining = {
         const currentWord = this.currentWords[this.currentIndex];
 
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <div class="text-right text-sm mb-2">${this.currentIndex + 1} / ${this.currentWords.length}</div>
             <div class="word-card h-64" onclick="this.classList.toggle('is-flipped')">
                 <div class="word-card-inner">
@@ -4419,6 +4423,7 @@ const DictionaryTraining = {
         let timeLeft = 15;
 
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <div class="flex justify-between items-center mb-2">
                 <div class="text-sm">${this.currentIndex + 1} / ${this.currentWords.length} | Score: ${this.score}</div>
                 <div id="sprint-timer" class="font-bold text-lg text-yellow-300">${timeLeft}s</div>
@@ -4488,6 +4493,7 @@ const DictionaryTraining = {
         const totalQuestions = this.currentWords.length;
         const accuracy = totalQuestions > 0 ? Math.round((this.score / totalQuestions) * 100) : 0;
         gameContent.innerHTML = `
+            <span class="modal-close-btn" onclick="DictionaryTraining.closeGame()">&times;</span>
             <h3 class="font-magic-header text-2xl text-center text-[#FFD700] mb-4">Training Complete!</h3>
             <p class="text-center text-5xl font-bold mb-4">${this.score}/${totalQuestions}</p>
             <p class="text-center text-2xl text-yellow-300 mb-6">Accuracy: ${accuracy}%</p>

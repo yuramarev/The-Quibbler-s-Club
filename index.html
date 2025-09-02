@@ -918,7 +918,7 @@ const App = {
         this.isAdmin = this.userId === this.ADMIN_UID;
         this.appStartTime = Timestamp.now();
         
-        document.getElementById('app-version').textContent = `v${this.VERSION}`;
+        document.getElementById('app-version').innerHTML = `<a href="https://t.me/quibblersclub" target="_blank" class="text-[#FFD700] hover:underline">Follow us on Telegram</a>`;
         
         this.setupRealtimeListeners();
         this.bindEventListeners();

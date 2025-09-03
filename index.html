@@ -2504,9 +2504,13 @@ const DiscussionQuestions = {
             `;
 
         } catch (error) {
-            console.error("Error fetching student homework:", error);
-            this.app.showNotification("Could not retrieve homework.", "error");
-            modalContent.innerHTML = `<p class="text-red-400">Error loading homework.</p>`;
+            console.error("Error fetching student homework (likely permission denied):", error);
+            this.app.showNotification("Access Denied", "info");
+            modalContent.innerHTML = `
+                <span class="modal-close-btn" onclick="DiscussionQuestions.close()">&times;</span>
+                <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">Oops!</h3>
+                <p class="text-center text-gray-300">This door is magically sealed. A higher level of access is required.</p>
+            `;
         }
     },
 

@@ -534,6 +534,7 @@
                 <button id="magic-shop-btn" class="btn btn-gold">🛍️ Magic Shop</button>
                 <button id="dueling-club-btn" class="btn btn-gold">⚔️ Dueling Club</button>
                 <button id="cast-spell-btn" class="btn btn-gold" disabled>🔮 Cast Spell</button>
+                <button id="mute-btn" class="btn btn-gold">🔊</button>
                 <button id="logout-btn" class="btn btn-destructive">Logout</button>
             </div>
         </header>
@@ -904,6 +905,7 @@ const App = {
     unsubscribeMain: null,
     unsubscribeSpells: null,
     unsubscribeRequests: null,
+    isMuted: false,
     appStartTime: null,
     logoUrl: "https://placehold.co/80x80/0C1C33/FFD700?text=LOGO",
 
@@ -917,6 +919,10 @@ const App = {
         this.dbRef = doc(db, "hogwarts-tracker", "main-state");
         this.isAdmin = this.userId === this.ADMIN_UID;
         this.appStartTime = Timestamp.now();
+
+        const savedMuteState = localStorage.getItem('isMuted');
+        this.isMuted = savedMuteState === 'true';
+        this.updateMuteButton();
         
         document.getElementById('app-version').innerHTML = `<a href="https://t.me/quibblersclub" target="_blank" class="text-[#FFD700] hover:underline">Follow us on Telegram</a>`;
         
@@ -958,6 +964,10 @@ const App = {
         document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
         document.getElementById('questions-btn').addEventListener('click', () => DiscussionQuestions.open());
         document.getElementById('change-password-btn').addEventListener('click', () => this.openChangePasswordDialog());
+        document.getElementById('mute-btn').addEventListener('click', () => {
+            this.isMuted = !this.isMuted;
+            this.updateMuteButton();
+        });
         
         // Event delegation for student groups container
         document.getElementById('student-groups-container').addEventListener('click', (e) => {
@@ -1938,6 +1948,7 @@ const App = {
     },
 
     playSound(notes, duration = 0.1, type = "triangle") {
+        if (this.isMuted) return;
         if (typeof Tone === 'undefined') return;
         try {
             const synth = new Tone.Synth({
@@ -1956,6 +1967,14 @@ const App = {
         } catch (e) {
             console.error("Error playing sound:", e);
         }
+    },
+
+    updateMuteButton() {
+        const muteBtn = document.getElementById('mute-btn');
+        if (muteBtn) {
+            muteBtn.textContent = this.isMuted ? '🔇' : '🔊';
+        }
+        localStorage.setItem('isMuted', this.isMuted);
     },
 
     showNotification(message, type = 'success') {

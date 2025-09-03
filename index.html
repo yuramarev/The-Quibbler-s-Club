@@ -448,6 +448,24 @@
             background-color: #0C1C33;
             transform: rotateY(180deg);
         }
+        .alpha-btn {
+            background-color: #2A3B4D;
+            color: #E0E0E0;
+            border: 1px solid #3D5568;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .alpha-btn:hover {
+            background-color: #3D5568;
+        }
+        .alpha-btn.active {
+            background-color: #FFD700;
+            color: #1A2B3C;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
@@ -2542,26 +2560,41 @@ const Dictionary = {
 
         const wordsHTML = Object.entries(this.userWords)
             .sort(([wordA], [wordB]) => wordA.localeCompare(wordB))
-            .map(([word, definition]) => `
-            <div class="dictionary-word-card p-4 rounded-lg flex justify-between items-start gap-4">
-                <div class="flex-grow">
-                    <h4 class="font-bold text-lg text-yellow-300 capitalize">${word}</h4>
-                    <p class="text-gray-300 mt-1 text-sm">${definition}</p>
+            .map(([word, data]) => {
+                // Handle both old (string) and new (object) data formats
+                const definition = typeof data === 'string' ? data : data.definition;
+                return `
+                <div class="dictionary-word-card p-4 rounded-lg flex justify-between items-start gap-4" data-word="${word.toLowerCase()}">
+                    <div class="flex-grow">
+                        <h4 class="font-bold text-lg text-yellow-300 capitalize">${word}</h4>
+                        <p class="text-gray-300 mt-1 text-sm">${definition}</p>
+                    </div>
+                    <div class="flex-shrink-0 flex flex-col gap-2">
+                         <button class="btn bg-blue-600 hover:bg-blue-700 text-white text-xs p-2" onclick="Dictionary.viewOnMerriamWebster('${word}')">M-W</button>
+                         <button class="btn btn-destructive text-xs p-2" onclick="Dictionary.deleteWord('${word}')">Delete</button>
+                    </div>
                 </div>
-                <div class="flex-shrink-0 flex flex-col gap-2">
-                     <button class="btn bg-blue-600 hover:bg-blue-700 text-white text-xs p-2" onclick="Dictionary.viewOnMerriamWebster('${word}')">M-W</button>
-                     <button class="btn btn-destructive text-xs p-2" onclick="Dictionary.deleteWord('${word}')">Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `}).join('');
 
         if (targetId === 'dictionary-modal-content') {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const alphabetHTML = alphabet.map(letter => `<button class="alpha-btn" onclick="Dictionary.filterByLetter('${letter}')">${letter}</button>`).join('');
+
             container.innerHTML = `
                 <span class="modal-close-btn" onclick="Dictionary.closeDictionary()">&times;</span>
                 <div class="flex justify-between items-center mb-4 border-b-2 border-yellow-600 pb-3">
                     <h3 class="font-magic-header text-2xl text-[#FFD700]">Your Personal Dictionary</h3>
                 </div>
-                <div class="space-y-3 max-h-[65vh] overflow-y-auto p-1">
+
+                <div class="mb-4 p-2 bg-[#0C1C33] rounded-lg">
+                    <input type="text" id="dictionary-search-input" onkeyup="Dictionary.filterWords()" placeholder="Search for a word..." class="w-full bg-[#2A3B4D] rounded p-2 border border-[#3D5568] mb-2">
+                    <div id="alphabet-filter" class="flex flex-wrap justify-center gap-1">
+                        <button class="alpha-btn active" onclick="Dictionary.filterByLetter('All')">All</button>
+                        ${alphabetHTML}
+                    </div>
+                </div>
+
+                <div id="dictionary-word-list" class="space-y-3 max-h-[50vh] overflow-y-auto p-1">
                     ${Object.keys(this.userWords).length > 0 ? wordsHTML : '<p class="text-center text-gray-400 p-8">Your dictionary is empty. Click words in books to add them!</p>'}
                 </div>
             `;
@@ -2577,6 +2610,49 @@ const Dictionary = {
 
     closeDictionary() {
         document.getElementById('dictionary-modal').classList.remove('show');
+    },
+
+    filterWords() {
+        const input = document.getElementById('dictionary-search-input');
+        const filter = input.value.toLowerCase();
+        const wordList = document.getElementById('dictionary-word-list');
+        if (!wordList) return;
+        const cards = wordList.getElementsByClassName('dictionary-word-card');
+
+        for (let i = 0; i < cards.length; i++) {
+            const word = cards[i].dataset.word;
+            if (word.includes(filter)) {
+                cards[i].style.display = "flex";
+            } else {
+                cards[i].style.display = "none";
+            }
+        }
+    },
+
+    filterByLetter(letter) {
+        const wordList = document.getElementById('dictionary-word-list');
+        if (!wordList) return;
+        const cards = wordList.getElementsByClassName('dictionary-word-card');
+        const lowerLetter = letter.toLowerCase();
+
+        // Update active button style
+        document.querySelectorAll('#alphabet-filter .alpha-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.textContent === letter) btn.classList.add('active');
+        });
+        
+        // Clear search input to avoid conflicts
+        const searchInput = document.getElementById('dictionary-search-input');
+        if(searchInput) searchInput.value = '';
+
+        for (let i = 0; i < cards.length; i++) {
+            const word = cards[i].dataset.word;
+            if (letter === 'All' || word.startsWith(lowerLetter)) {
+                cards[i].style.display = "flex";
+            } else {
+                cards[i].style.display = "none";
+            }
+        }
     },
     
     viewOnMerriamWebster(word) {

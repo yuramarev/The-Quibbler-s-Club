@@ -466,6 +466,44 @@
             color: #1A2B3C;
             font-weight: bold;
         }
+
+        /* FINAL Text Adventure Styles & Fixes */
+
+        /* 1. Z-Index fix for ALL pop-up windows to appear on top */
+        #text-adventure-modal { z-index: 3000; }
+        #modal { z-index: 3100; } /* For rules, appears above the game */
+        #definition-popup-modal { z-index: 3200; } /* For dictionary words, appears above everything */
+
+        /* 2. New Dark Theme for the Game UI */
+        #ta-modal-content {
+            background-color: #0C1C33; /* Main app background */
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+        #ta-output {
+            color: #E0E0E0; /* Standard light text for readability */
+            background-color: #1A2B3C; /* Panel background, slightly lighter */
+        }
+        #ta-output p, #ta-output div {
+            margin-bottom: 0.75rem; /* Spacing between paragraphs */
+        }
+
+        /* 3. Text colors for different message types */
+        .ta-command { color: #FFD700; font-style: italic; }
+        .ta-error { color: #F87171; } /* A bright, clear red */
+        .ta-success { color: #34D399; font-weight: 600; } /* A pleasant green */
+        .ta-info { color: #8ab4f8; } /* The same color as clickable words */
+        .ta-event { color: #FFD700; font-weight: 600; } /* For important story beats */
+
+        /* 4. Input field styling */
+        #ta-input {
+            background-color: #2A3B4D !important;
+            border-color: #3D5568 !important;
+            color: #E0E0E0 !important;
+            font-family: 'Lora', serif;
+        }
+
     </style>
 </head>
 <body class="bg-[#0C1C33] text-[#E0E0E0]">
@@ -542,13 +580,14 @@
                     User: <span id="user-display" class="font-bold text-white"></span>
                     <button id="change-password-btn" class="ml-2 text-xs text-[#FFD700] hover:underline focus:outline-none">(change password)</button>
                  </div>
-                <button id="quidditch-btn" class="btn btn-gold">⚡ Quidditch</button>
+                <button id="quidditch-btn" class="btn btn-gold">🧹 Quidditch</button>
+                <button id="duels-btn" class="btn btn-gold">⚔️ Duels</button>
+                <button id="hp1-adventure-btn" class="btn btn-gold">📜 HP1 Adventure</button>
                 <button id="dictionary-training-btn" class="btn btn-gold">🧠 Train Words</button>
                 <button id="dictionary-btn" class="btn btn-gold">📖 Dictionary</button>
                 <button id="library-btn" class="btn btn-gold">📚 Library</button>
-                <button id="questions-btn" class="btn btn-gold">❓ Questions</button>
-                <button id="magic-shop-btn" class="btn btn-gold">🛍️ Magic Shop</button>
-                <button id="dueling-club-btn" class="btn btn-gold">⚔️ Dueling Club</button>
+                <button id="questions-btn" class="btn btn-gold">❓</button>
+                <button id="magic-shop-btn" class="btn btn-gold">🛍️ Shop</button>
                 <button id="cast-spell-btn" class="btn btn-gold" disabled>🔮 Cast Spell</button>
                 <button id="mute-btn" class="btn btn-gold">🔊</button>
                 <button id="logout-btn" class="btn btn-destructive">Logout</button>
@@ -638,6 +677,13 @@
     </div>
     <div id="training-game-modal" class="modal-backdrop">
         <div id="training-game-content" class="modal-content !max-w-2xl"></div>
+    </div>
+    <div id="text-adventure-modal" class="modal-backdrop">
+        <div id="text-adventure-modal-content" class="modal-content !max-w-4xl !max-h-[95vh] bg-[#0C1C33] p-0 flex flex-col">
+            </div>
+    </div>
+    <div id="games-hub-modal" class="modal-backdrop">
+        <div id="games-hub-content" class="modal-content"></div>
     </div>
     
     <!-- Reading Mode Container -->
@@ -955,6 +1001,8 @@ const App = {
         Quidditch.app = this;
         DiscussionQuestions.app = this;
         DictionaryTraining.app = this;
+
+        TextAdventure.app = this;
     },
 
     // ==== EVENT BINDING ====
@@ -963,6 +1011,9 @@ const App = {
         
         document.getElementById('award-points-btn').addEventListener('click', () => this.openAwardPointsDialog());
         document.getElementById('award-achievement-btn').addEventListener('click', () => this.openAwardAchievementDialog());
+        document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
+        document.getElementById('duels-btn').addEventListener('click', () => DuelingClub.openDuelSetup());
+        document.getElementById('hp1-adventure-btn').addEventListener('click', () => TextAdventure.open());     
         document.getElementById('potion-requests-btn').addEventListener('click', () => this.openPurchaseRequestsDialog());
         document.getElementById('assign-houses-btn').addEventListener('click', () => this.openSortGroupDialog());
         document.getElementById('manage-groups-btn').addEventListener('click', () => this.openManageGroupsDialog());
@@ -972,12 +1023,11 @@ const App = {
         document.getElementById('link-accounts-btn').addEventListener('click', () => this.openLinkAccountsDialog());
         document.getElementById('history-log-btn').addEventListener('click', () => this.showHistoryLog());
         castSpellBtn.addEventListener('click', () => this.broadcastSpellEffect());
-        document.getElementById('dueling-club-btn').addEventListener('click', () => DuelingClub.openDuelSetup());
+        // Note: Direct listeners for dueling, quidditch, etc., are removed as they are now in the Games Hub.
         document.getElementById('magic-shop-btn').addEventListener('click', () => Shop.open());
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
         document.getElementById('dictionary-training-btn').addEventListener('click', () => DictionaryTraining.openHub());
-        document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
         document.getElementById('questions-btn').addEventListener('click', () => DiscussionQuestions.open());
         document.getElementById('change-password-btn').addEventListener('click', () => this.openChangePasswordDialog());
         document.getElementById('mute-btn').addEventListener('click', () => {
@@ -1002,8 +1052,14 @@ const App = {
                     document.getElementById('dictionary-training-modal').classList.remove('show');
                 } else if (document.getElementById('questions-modal').classList.contains('show')) {
                     DiscussionQuestions.close();
+                } else if (document.getElementById('text-adventure-modal').classList.contains('show')) { // Added for Text Adventure
+                    TextAdventure.close();
                 } else if (document.getElementById('quidditch-modal').classList.contains('show')) {
                     Quidditch.closeGame();
+                } else if (document.getElementById('duel-modal').classList.contains('show')) { // Moved for better grouping
+                    DuelingClub.closeDuelModal();
+                } else if (document.getElementById('games-hub-modal').classList.contains('show')) { // Added for Games Hub
+                    document.getElementById('games-hub-modal').classList.remove('show');
                 } else if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
                     Library.exitReadingMode();
                 } else if (document.getElementById('reader-modal').classList.contains('show')) {
@@ -1014,8 +1070,6 @@ const App = {
                     Dictionary.closeDictionary();
                 } else if (document.getElementById('library-modal').classList.contains('show')) {
                     document.getElementById('library-modal').classList.remove('show');
-                } else if (document.getElementById('duel-modal').classList.contains('show')) {
-                    DuelingClub.closeDuelModal();
                 } else if (document.getElementById('modal').classList.contains('show')) {
                     this.closeModal();
                 }
@@ -1301,6 +1355,43 @@ const App = {
                 onConfirm();
             });
         }
+    },
+
+    openGamesHub() {
+        const gamesHubContent = document.getElementById('games-hub-content');
+        const contentHTML = `
+            <span class="modal-close-btn" onclick="document.getElementById('games-hub-modal').classList.remove('show')">&times;</span>
+            <h3 class="font-magic-header text-3xl text-center text-[#FFD700] mb-6">Chamber of Games</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                
+                <div class="training-hub-card p-4 rounded-lg flex items-center gap-4" onclick="Quidditch.openGame(); document.getElementById('games-hub-modal').classList.remove('show');">
+                    <div class="text-5xl">🧹</div>
+                    <div>
+                        <h4 class="font-bold text-lg text-yellow-300">Quidditch Match</h4>
+                        <p class="text-sm text-gray-300">Take to the skies and catch the Golden Snitch in this narrative simulation.</p>
+                    </div>
+                </div>
+
+                <div class="training-hub-card p-4 rounded-lg flex items-center gap-4" onclick="DuelingClub.openDuelSetup(); document.getElementById('games-hub-modal').classList.remove('show');">
+                    <div class="text-5xl">⚔️</div>
+                    <div>
+                        <h4 class="font-bold text-lg text-yellow-300">Dueling Club</h4>
+                        <p class="text-sm text-gray-300">Test your spellcasting prowess in a turn-based duel against another student.</p>
+                    </div>
+                </div>
+
+                <div class="training-hub-card p-4 rounded-lg flex items-center gap-4 md:col-span-2" onclick="TextAdventure.open(); document.getElementById('games-hub-modal').classList.remove('show');">
+                    <div class="text-5xl">📜</div>
+                    <div>
+                        <h4 class="font-bold text-lg text-yellow-300">HP1 Text Adventure</h4>
+                        <p class="text-sm text-gray-300">Relive the first book in an interactive story where your commands shape the adventure.</p>
+                    </div>
+                </div>
+
+            </div>
+        `;
+        gamesHubContent.innerHTML = contentHTML;
+        document.getElementById('games-hub-modal').classList.add('show');
     },
 
     closeModal() {
@@ -4605,6 +4696,1475 @@ const DictionaryTraining = {
 };
 window.DictionaryTraining = DictionaryTraining;
 
-</script>
+// =================================================================================
+// HARRY POTTER TEXT ADVENTURE MODULE (REVISED LOGIC & UI EDITION 3.0)
+// =================================================================================
+const TextAdventure = {
+    app: null,
+    gameState: {},
+    activePuzzle: null,
+
+    // [NEW] Emoji mapping for inventory items
+    itemEmojis: {
+        'toy_soldiers': '💂',
+        'cake': '🎂',
+        'letter': '✉️',
+        'gringotts_key': '🔑',
+        'galleons': '💰',
+        'robes': '🧙',
+        'school_books': '📚',
+        'wand': '✨',
+        'chocolate_frog': '🐸',
+        'dumbledore_card': '🃏',
+        'invisibility_cloak': '🧥',
+        'flute': '🎶',
+        'feather': '☁️',
+        'restricted_book': '📖',
+        'broomstick': '🧹',
+        'parchment': '📜',
+        'philosophers_stone': '💎'
+    },
+
+    // =================================================================================
+    //  HINT DATA: Contextual hints for when the player is stuck.
+    // =================================================================================
+    hintData: {
+        'cupboardUnderStairs': "Your goal is to get out of the cupboard. Try interacting with the only exit: the `door`. The command `open door` might be what you need.",
+        'privetDriveHallway': (flags) => {
+            if (!flags.first_letter_arrived) {
+                return "You are in a hallway. People usually leave houses through the front door. Perhaps you should try to `go out` or `go west`.";
+            }
+            if (!flags.letter_taken_once) {
+                return "There's a strange letter on the mat. It seems important. You could try to `take letter`.";
+            }
+            return "The story is progressing after the letter incident. To see what happens next, try exploring the house again. Perhaps visiting the `living room` would trigger something.";
+        },
+        'smallestBedroom': "You've been moved to a new room. The plot is advancing. Try to trigger the next event by interacting with the house, maybe checking the `front door` again.",
+        'hutOnTheRock': "A giant man just broke down the door and gave you a cake. He seems to be the key to getting out of here. Maybe you should `talk to hagrid`?",
+        'leakyCauldron': "You need to find the entrance to Diagon Alley. Hagrid mentioned it was through the back. The description mentions a `wall`. You should try to `open wall`.",
+        'diagonAlley': (flags) => {
+            if (!flags.has_money) {
+                return "This is a hub area. Your main goal is to get your school supplies. You'll need money from the bank first. Try to `go north`.";
+            }
+            if (!flags.has_wand) {
+                return "You have money. Now you need a wand. Ollivanders is to the `east`.";
+            }
+            if (!flags.has_robes || !flags.has_books) {
+                return "You have your wand and money. You still need to buy `robes` and `books` for school.";
+            }
+            return "You have all your supplies! It's time to head to the train station. Hagrid is waiting for you back at the Leaky Cauldron. You should `go pub` to meet him.";
+        },
+        'gringotts': "To get into your vault, you need a key. Hagrid gave you one. You should `take key` and then try to `use key` or `go vaults`.",
+        'vault687': "You are in your vault. You see mounds of gold, silver, and bronze coins. You should probably `take money` or `take coins`.",
+        'ollivanders': (flags) => {
+            if (!flags.has_wand) {
+                return "You are in Ollivander's shop. The old man is waiting. To get your wand, you should `talk to ollivander`.";
+            }
+            return "You have your wand. There is nothing else to do here. You should `go out` to return to Diagon Alley.";
+        },
+        'platform934': "You need to get to Platform 9¾. The Weasleys mentioned you have to go straight at the `barrier` between platforms 9 and 10. Try the command `go barrier`.",
+        'hogwartsExpress': "You are on the train to Hogwarts. A boy named Ron Weasley is in your compartment. Maybe you should `talk to ron` to pass the time. Don't forget to `eat` your chocolate frog!",
+        'greatHall': (flags) => {
+             if (!flags.sorted) {
+                return "You are in the Great Hall. Professor McGonagall is calling students to the Sorting Hat. You should probably `examine hat` or `talk to mcgonagall`.";
+            }
+            return "You've been sorted! To explore the castle, you first need to leave the Great Hall and go to your `common room`.";
+        },
+        'gryffindorCommonRoom': "You are in your common room. Remember the anonymous gifts you received? You should `take` them before exploring. You'll need them.",
+        'hogwartsCorridor': (flags) => {
+            if (!flags.troll_defeated) {
+                return "The main thing to do right now is investigate the commotion in the girls' `bathroom`. It sounds urgent.";
+            }
+            return "You are in a main corridor. You can go to the `charms` classroom, down to the `dungeons`, `outside` for lessons on the grounds, or `up` the grand staircase.";
+        },
+        'charmsClassroom': "You are here to learn a new spell, Wingardium Leviosa. Professor Flitwick is instructing you. You should `take feather` and then `practice spell`.",
+        'potionsClassroom': "Professor Snape is here, and he looks like he's in a foul mood. To pass his class and gain crucial knowledge, you must answer his questions. Try to `talk to snape`.",
+        'flyingLessonGrounds': "You are on the grounds of Hogwarts with other first-years for your first flying lesson with Madam Hooch. She is instructing you to command your broom. You should `talk to hooch` to begin.",
+        'girlsBathroom': (flags) => {
+            if (!flags.troll_defeated) {
+                return "There's a troll here! You must save Hermione. You learned the levitation charm in class. You could try to `cast wingardium leviosa` or `use wand on troll`.";
+            }
+            return "The troll is defeated. There's nothing else to do here. You should probably `go out` and continue exploring Hogwarts.";
+        },
+        'thirdFloorCorridor': (flags) => {
+             if (!flags.knows_alohomora) {
+                 return "This is the forbidden corridor. At the end of it is a large, locked `door`. You wonder how you might get it open.";
+             }
+             if (!flags.knows_flamel) {
+                return "This is the forbidden corridor. You hear growling from behind a locked `door`. You need to find out what's being guarded. Research might help. Try the `library`, or perhaps you have an item that contains useful information? Click on your inventory items to `examine` them.";
+             }
+             if (flags.knows_flamel && !flags.fluffy_asleep) {
+                 return "There's a giant three-headed dog behind the door. Hagrid mentioned that music calms beasts like that. If only you had a musical instrument... perhaps you should `use flute`?";
+             }
+             return "Fluffy is asleep. Now's your chance to go through the trapdoor. You should `cast alohomora` on the door.";
+        },
+        'library': "This is the perfect place for research. You've heard rumors about what Fluffy is guarding. Try to `research flamel` to find more information.",
+        'trapdoorRoom': "You're trapped by a plant! Hermione mentioned its weakness in the book. It's Devil's Snare, which hates sunlight. Maybe a light-creating spell could work? Try `cast lumos solem`.",
+        'flyingKeysRoom': (flags) => {
+            if (!flags.knows_flying) {
+                return "You are in a room full of flying keys, but you can't reach them. You see a broomstick floating nearby, but you haven't had your first lesson yet and don't know how to use it. You must have a `flying lesson` first.";
+            }
+            return "You are in a high-ceilinged chamber filled with hundreds of flying keys. On the far side is a heavy wooden door. A single broomstick is floating nearby. Thanks to your flying lesson, you know what to do. You should `take broomstick`.";
+        },
+        'chessChamber': "This is a giant, living chess set. The only way is across. You'll have to play. Ron is an expert and will guide you. You must trust him and `go across`.",
+        'potionsRiddleRoom': (flags) => {
+            if (!flags.potions_quiz_passed) {
+                return "You enter a dark room with a table of potions and a riddle. The logic puzzle is incredibly complex. You stare at the bottles, but the logic of the riddle escapes you. You didn't pay enough attention in Snape's class and cannot solve it. You must go back and learn more.";
+            }
+            return "You enter a dark room with a table of potions and a riddle. Thanks to the knowledge you gained from Snape's quiz, you feel confident you can solve this. `examine parchment` to read the riddle, and then `go forward` to choose the correct potion.";
+        },
+        'finalChamber': "This is the final challenge. The Mirror is the key. Dumbledore's words echo in your mind: only someone who wanted to *find* the Stone, but not *use* it, could get it. Your intention is everything. Perhaps you simply need to face the `mirror` and look.",
+        'hospitalWing': "You've won, but at a great cost. Dumbledore is here. To hear the end of the story, you should `talk to dumbledore`.",
+        'default': "If you're stuck, try these basic commands: `look` to re-examine the room, `inventory` (or `i`) to check your items, and click on an inventory emoji to `examine` it. Also try moving in all available directions (`go north`, `go east`, etc.)."
+    },
+
+    worldData: {
+        'cupboardUnderStairs': {
+            description: "You are in a small, dark cupboard under the stairs. The air is thick with the smell of dust and old socks. A single, bare lightbulb hangs from the ceiling, casting dim shadows. A small wooden door is the only way out.",
+            exits: {
+                'out': { locked: true, puzzle: 'cupboardDoor' },
+                'door': { locked: true, puzzle: 'cupboardDoor' }
+            },
+            items: [ { id: 'toy_soldiers', name: 'a few broken toy soldiers', description: "They are plastic army men, missing various limbs. Probably Dudley's old toys. They remind you of a lonely childhood." } ]
+        },
+        'privetDriveHallway': {
+            description: "You are standing in the immaculately clean hallway of Number 4, Privet Drive. A staircase leads up. The front door is to the west, and the living room is to the east. The door to the cupboard is here.",
+            exits: {
+                'up': { to: 'upstairsLanding' },
+                'west': { to: 'frontDoor', event: 'firstLetter' },
+                'out': { to: 'frontDoor', event: 'firstLetter' },
+                'east': { to: 'livingRoom' },
+                'south': { to: 'kitchen'},
+                'cupboard': { to: 'cupboardUnderStairs' }
+            },
+            items: []
+        },
+        'frontDoor': {
+            description: "You are at the front door. Through the frosted glass, you can see the perfectly manicured lawn of Privet Drive. There is a mail slot in the door.",
+            exits: {
+                'east': { to: 'privetDriveHallway' },
+                'out': { locked: true, description: "The door is securely locked. You're not allowed out on your own."}
+            },
+            items: []
+        },
+        'livingRoom': {
+            description: "You are in the living room. A fireplace sits on the north wall, currently boarded up. The television is flickering in the corner, showing a news report about owls. The hallway is to the west.",
+            exits: { 'west': { to: 'privetDriveHallway' } },
+            items: []
+        },
+        'kitchen': {
+            description: "You are in the kitchen. It's spotless, apart from the lingering smell of bacon. Aunt Petunia is here, watching you with narrowed eyes. The back door leads to the garden, and the hallway is to the north.",
+            exits: {
+                'north': { to: 'privetDriveHallway' },
+                'garden': { locked: true, description: "You have chores to do before you can go out there."}
+            },
+            items: []
+        },
+        'upstairsLanding': {
+            description: "You are on the upstairs landing. There are two doors here. One leads to your aunt and uncle's bedroom, the other is for Dudley's second bedroom, which is mostly full of his broken toys.",
+            exits: {
+                'down': { to: 'privetDriveHallway' },
+                'dudleys': { locked: true, description: "It's Dudley's main bedroom. Best not to go in there." },
+                'smallest bedroom': { to: 'smallestBedroom' }
+            },
+            items: []
+        },
+        'smallestBedroom': {
+            description: "This is Dudley's second bedroom, the smallest room in the house. It's filled with things Dudley couldn't fit into his main room. There's a window overlooking the front garden.",
+            exits: { 'out': { to: 'upstairsLanding' } },
+            items: []
+        },
+        'hutOnTheRock': {
+            description: "BOOM! The door splinters open, and a giant of a man named Hagrid enters, shaking the whole hut. 'Got summat fer yeh,' he says, handing you a slightly squashed box. The wind howls outside.",
+            description_after_flag: {
+                flag: 'hagrid_met',
+                text: "You are in the rickety hut on the rock. The wind howls outside, but Hagrid's presence makes it feel much safer. He is waiting to take you to Diagon Alley."
+            },
+            exits: { 'leave': { locked: true, puzzle: 'hagridTrust' } },
+            items: [ { id: 'cake', name: 'a squashed box', description: "Inside the box is a large, sticky chocolate cake with 'Happee Birthdae Harry' written on it in green icing." } ]
+        },
+        'leakyCauldron': {
+            description: "You are in a dark, shabby pub called the Leaky Cauldron. It's filled with witches and wizards. The bartender, Tom, gives you a nod. A brick wall at the back of the pub seems to be the way forward.",
+            exits: {
+                'london': { locked: true, description: "You can't go back to the Muggle world without Hagrid." },
+                'wall': { locked: true, puzzle: 'diagonAlleyWall' }
+            },
+            items: []
+        },
+        'diagonAlley': {
+            description: "You step into a bustling, cobbled street filled with amazing shops. This is Diagon Alley. To the north is Gringotts Bank. Ollivanders is to the east. You can also see shops for robes and books.",
+            exits: {
+                'north': { to: 'gringotts' },
+                'east': { to: 'ollivanders', requiresFlag: 'has_money', lockedDescription: "It's probably best to get some money from Gringotts first before you go shopping for a wand." },
+                'robes': { to: 'madamMalkins', requiresFlag: 'has_money', lockedDescription: "You'll need money from Gringotts before you can buy robes." },
+                'books': { to: 'flourishAndBlotts', requiresFlag: 'has_money', lockedDescription: "You can't buy books without money. Best visit Gringotts first." },
+                'pub': { to: 'leakyCauldron', event: 'goToPlatform' }
+            },
+            items: []
+        },
+        'gringotts': {
+            description: "You are inside Gringotts, a vast marble hall. Goblins are sitting on high stools, weighing coins. A goblin named Griphook approaches you. A door leads to the vaults.",
+            exits: {
+                'out': { to: 'diagonAlley' },
+                'vaults': { locked: true, puzzle: 'gringottsKey' }
+            },
+            items: [ { id: 'gringotts_key', name: 'a tiny golden key', description: "It's a small, ornate golden key. Hagrid gives it to you." } ]
+        },
+        'vault687': {
+            description: "Griphook opens the vault. Inside are mounds of gold, silver, and bronze coins. This is your inheritance!",
+            exits: { 'out': { to: 'gringotts' } },
+            items: [ { id: 'galleons', name: 'a large bag of coins', description: "Heaps of shiny gold Galleons, silver Sickles, and bronze Knuts." } ]
+        },
+        'madamMalkins': {
+            description: "You are in 'Madam Malkin's Robes for All Occasions'. A kind-faced witch is measuring a pale boy with a bored, drawling voice. He's talking about Quidditch.",
+            exits: {'out': { to: 'diagonAlley'}},
+            items: [ {id: 'robes', name: 'a set of Hogwarts robes', description: "Three sets of plain work robes in black. They feel a bit scratchy."}]
+        },
+        'flourishAndBlotts': {
+            description: "You are in the bookshop, Flourish and Blotts. Shelves are stacked to the ceiling with books. The air smells of old parchment.",
+            exits: {'out': { to: 'diagonAlley'}},
+            items: [ {id: 'school_books', name: 'a pile of school books', description: "All your required reading for the first year, including 'A History of Magic' and 'Fantastic Beasts and Where to Find Them'."}]
+        },
+        'ollivanders': {
+            description: "The shop is narrow and dusty. Thousands of narrow boxes are stacked to the ceiling. An old man with pale, silvery eyes, Mr. Ollivander, appears. 'I wondered when I'd be seeing you, Mr. Potter,' he says.",
+            description_after_flag: {
+                flag: 'has_wand',
+                text: "You are back in Ollivander's wand shop. The old man gives you a knowing nod from behind the counter."
+            },
+            exits: { 'out': { to: 'diagonAlley' } },
+            items: []
+        },
+        'platform934': {
+            description: "You are at King's Cross Station, standing between platforms 9 and 10. There's a solid-looking barrier here. The Hogwarts Express is supposed to be on Platform 9¾, but you can't see it.",
+            exits: { 'barrier': { locked: true, puzzle: 'platformBarrier'} },
+            items: []
+        },
+        'hogwartsExpress': {
+            description: "You are on the Hogwarts Express, a magnificent scarlet steam engine. You've found an empty compartment. A red-haired boy named Ron Weasley is already here. The train begins to move.",
+            exits: {},
+            items: [ { id: 'chocolate_frog', name: 'a Chocolate Frog', description: "A magical chocolate frog. It probably has a collectible card inside." } ]
+        },
+        'greatHall': {
+            description: "You are in the Great Hall at Hogwarts. It's enormous, lit by thousands of floating candles. The ceiling is bewitched to look like the sky outside. At the front, the teachers' table is laden with golden plates and goblets. At the center sits Albus Dumbledore. Professor McGonagall stands nearby, holding a frayed wizard's hat: the Sorting Hat.",
+            description_after_flag: {
+                flag: 'sorted',
+                text: "You are in the Great Hall. Students from all four houses are eating and talking loudly. Your place is at the Gryffindor table."
+            },
+            exits: { 'common room': { locked: true, puzzle: 'fatLadyPassword' } },
+            items: []
+        },
+        'gryffindorCommonRoom': {
+            description: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. A portrait of a Fat Lady guards the entrance. Two anonymously-given Christmas presents are on your bed.",
+            description_after_flag: {
+                flag: 'gifts_taken',
+                text: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. A portrait of a Fat Lady guards the entrance."
+            },
+            exits: { 'out': { to: 'hogwartsCorridor' } },
+            items: [
+                { id: 'invisibility_cloak', name: 'a strange silvery cloak', description: "A note attached to it says 'Use it well.' It's an invisibility cloak!" },
+                { id: 'flute', name: 'a wooden flute', description: "A simple wooden flute, a gift from Hagrid. It plays a haunting melody." }
+            ]
+        },
+        'hogwartsCorridor': {
+            description: "You are in a stone corridor on the first floor. Suits of armor line the walls, and portraits watch you pass. Doors lead to the Charms classroom, down to the dungeons, and outside to the grounds. A grand staircase goes up.",
+            exits: {
+                'common room': { to: 'gryffindorCommonRoom' },
+                'charms': { to: 'charmsClassroom' },
+                'dungeons': { to: 'dungeonCorridor' },
+                'outside': { to: 'flyingLessonGrounds' },
+                // [LOGIC CHANGE] Going upstairs is now blocked until the troll is defeated.
+                'up': { locked: true, puzzle: 'filchEncounter', requiresFlag: 'troll_defeated', lockedDescription: "You hear a scream from the girls' bathroom down the hall. It sounds like Hermione is in trouble. You should check it out (`go bathroom`) before exploring upstairs." },
+                'bathroom': { to: 'girlsBathroom' }
+            },
+            items: []
+        },
+        'charmsClassroom': {
+            description: "You are in the Charms classroom. The tiny Professor Flitwick is standing on a pile of books. 'Today we will practice the levitation charm!' he squeaks. 'Swish and flick!' You see a feather on your desk.",
+            description_after_flags: [
+                {
+                    flag: 'knows_leviosa',
+                    text: "You are back in the Charms classroom. It's quiet now that the lesson is over."
+                },
+                {
+                    flag: 'feather_taken',
+                    text: "You have the feather. Professor Flitwick is still instructing the class. You should try to `practice spell`."
+                }
+            ],
+            exits: { 'out': { to: 'hogwartsCorridor' } },
+            items: [ {id: 'feather', name: 'a feather', description: 'A simple white feather for practicing your charms. It feels very light.'} ]
+        },
+        'dungeonCorridor': {
+            description: "You are in a cold, damp dungeon corridor. The air is chilly. A door here leads to the Potions classroom.",
+            exits: { 'up': { to: 'hogwartsCorridor' }, 'potions': { to: 'potionsClassroom' } },
+            items: []
+        },
+        'potionsClassroom': {
+            description: "You are in the Potions classroom. Professor Snape is gliding between tables, his black robes billowing. He stares at you with cold, black eyes. 'Potter,' he sneers. 'Our new celebrity.'",
+            description_after_flag: {
+                flag: 'potions_quiz_passed',
+                text: "You are back in the Potions classroom. Snape gives you a cold glare but says nothing more. The memory of his interrogation is still fresh."
+            },
+            exits: { 'out': { to: 'dungeonCorridor' } },
+            items: []
+        },
+        'flyingLessonGrounds': {
+            description: "You are outside on the Hogwarts grounds. A row of old broomsticks lies on the grass. Madam Hooch, the flying instructor, stands before the class. 'Well, what are you all waiting for?' she barks. 'Everyone stand by a broomstick. Come on, hurry up.'",
+            description_after_flag: {
+                flag: 'knows_flying',
+                text: "You are back on the training grounds. The other students are gone, and the brooms have been put away. The grass smells freshly cut."
+            },
+            exits: { 'inside': { to: 'hogwartsCorridor' } },
+            items: []
+        },
+        'girlsBathroom': {
+            description: "You are in a girls' bathroom. It smells awful, and there's a huge wooden club on the floor. A massive mountain troll is cornering Hermione!",
+            description_after_flag: {
+                flag: 'troll_defeated',
+                text: "You are in the girls' bathroom. The smell is much better now, but the memory of the troll still lingers."
+            },
+            exits: { 'out': { to: 'hogwartsCorridor'} },
+            items: []
+        },
+        'thirdFloorCorridor': {
+            description: "You are in the forbidden third-floor corridor. It's dark and spooky. At the end of the corridor is a locked door. You hear menacing growls from behind it. A door to the library is also here.",
+            description_after_flag: {
+                flag: 'fluffy_asleep',
+                text: "You are in the forbidden third-floor corridor. The menacing growls have been replaced by loud snores. Now is your chance!"
+            },
+            exits: {
+                'down': { to: 'hogwartsCorridor' },
+                'door': { locked: true, puzzle: 'fluffyDoor' },
+                'library': {to: 'library'}
+            },
+            items: []
+        },
+        'library': {
+            description: "You are in the Hogwarts library. It's a vast, silent room with towering shelves of books. Madam Pince, the librarian, watches you like a hawk from her desk.",
+            description_after_flag: {
+                flag: 'knows_flamel',
+                text: "You are in the Hogwarts library. The knowledge you found about the Philosopher's Stone weighs heavily on your mind."
+            },
+            exits: {'out': {to: 'thirdFloorCorridor'}},
+            items: [ {id: 'restricted_book', name: 'a heavy book from the restricted section', description: "The book is about 'Potent Potions'. It looks very old."}]
+        },
+        'trapdoorRoom': {
+            description: "You land on something soft and damp. It's a strange, wriggling plant with thick tendrils that are beginning to wrap around you! The only other exit is blocked by the plant.",
+            exits: {
+                'up': { locked: true, description: "The trapdoor has slammed shut and you can't reach it." },
+                'plant': { locked: true, puzzle: 'devilsSnare' }
+            },
+            items: []
+        },
+        'flyingKeysRoom': {
+            description: "You are in a high-ceilinged chamber filled with hundreds of fluttering, jewel-bright birds. You realize they're not birds - they're keys! On the far side is a heavy wooden door. A single broomstick is floating nearby.",
+            description_after_flag: {
+                flag: 'broomstick_taken',
+                text: "You are in a high-ceilinged chamber filled with hundreds of fluttering, jewel-bright keys. On the far side is a heavy wooden door."
+            },
+            exits: {
+                'back': { to: 'trapdoorRoom' },
+                'door': { locked: true, puzzle: 'flyingKey' }
+            },
+            items: [ {id: 'broomstick', name: 'a broomstick', description: 'An old Silver Arrow. It looks reliable.'} ]
+        },
+        'chessChamber': {
+             description: "You enter a huge, dark chamber on the edge of a giant chessboard. Across the room stand enormous black chess pieces. They turn their helmeted heads to look at you.",
+             exits: {
+                 'back': { to: 'flyingKeysRoom' },
+                 'across': { locked: true, puzzle: 'chessPuzzle' }
+             },
+             items: []
+        },
+        'potionsRiddleRoom': {
+            description: "You enter a dark room with a table in the center. On it are seven potions in different-shaped bottles. A piece of parchment with a riddle is next to them. Flames block the way forward and the way back.",
+            exits: {
+                'forward': { locked: true, puzzle: 'potionsRiddle' },
+                'back': { locked: true, description: 'A wall of black fire blocks this doorway.' }
+            },
+            items: [ {id: 'parchment', name: 'a piece of parchment', description: "Danger lies before you, while safety lies behind, Two of us will help you, whichever you would find, One among us seven will let you move ahead, Another will transport the drinker back instead..."}]
+        },
+        'finalChamber': {
+            description: "You are in the final chamber. It's not Snape, but Professor Quirrell! Standing before him is the magnificent Mirror of Erised. Quirrell turns to face you, a triumphant, twitching smile on his face. 'You,' he rasps.",
+            exits: {},
+            items: []
+        },
+        'hospitalWing': {
+            description: "You are lying in a bed with crisp white sheets in the hospital wing. Your head hurts. The last thing you remember is a searing pain in your scar, and Quirrell's face turning to dust. Albus Dumbledore is sitting beside you, smiling.",
+            exits: {},
+            items: []
+        }
+    },
+
+    puzzles: {
+        'potionsQuestion1': {
+            A2: { question: "What do you get if you add asphodel to wormwood?", options: ["A love potion", "A sleeping potion", "A healing potion", "A poison"], correctAnswer: "A sleeping potion", explanation: "Powdered root of asphodel added to an infusion of wormwood creates the Draught of Living Death, a powerful sleeping potion." },
+            B1: { question: "What would I get if I added powdered root of asphodel to an infusion of wormwood?", options: ["A Potion of Invisibility", "The Draught of Living Death", "The Potion of Deep Slumber", "The Elixir of Life"], correctAnswer: "The Draught of Living Death", explanation: "This is a direct quote from the book. The potion created is the Draught of Living Death, a very powerful sleeping potion." },
+            B2: { question: "What would I get if I added powdered root of asphodel to an infusion of wormwood?", options: ["A Potion of Invisibility", "The Draught of Living Death", "The Potion of Deep Slumber", "The Elixir of Life"], correctAnswer: "The Draught of Living Death", explanation: "This is a direct quote from the book. The potion created is the Draught of Living Death, a very powerful sleeping potion." },
+            C1: { question: "What would I get if I added powdered root of asphodel to an infusion of wormwood?", options: ["A Potion of Invisibility", "The Draught of Living Death", "The Potion of Deep Slumber", "The Elixir of Life"], correctAnswer: "The Draught of Living Death", explanation: "This is a direct quote from the book. The potion created is the Draught of Living Death, a very powerful sleeping potion." },
+            reward: { type: 'trigger_puzzle', puzzle: 'potionsQuestion2', successMessage: "'Correct. The Draught of Living Death. Let's try another...'" },
+            failureMessage: "'Wrong. Clearly, fame isn't everything.' Snape sneers and ignores you."
+        },
+        'potionsQuestion2': {
+            A2: { question: "Where can you find a bezoar?", options: ["In a plant", "In a snake", "In the stomach of a goat", "In a tree"], correctAnswer: "In the stomach of a goat", explanation: "A bezoar is a stone taken from the stomach of a goat, and it will save you from most poisons." },
+            B1: { question: "Where, then, would you look if I told you to find me a bezoar?", options: ["In the Restricted Section", "In the stomach of a goat", "In a dragon's liver", "In a mermaid's purse"], correctAnswer: "In the stomach of a goat", explanation: "A bezoar is a stone-like mass taken from the stomach of a goat, known for being a powerful antidote to most poisons." },
+            B2: { question: "Where, then, would you look if I told you to find me a bezoar?", options: ["In the Restricted Section", "In the stomach of a goat", "In a dragon's liver", "In a mermaid's purse"], correctAnswer: "In the stomach of a goat", explanation: "A bezoar is a stone-like mass taken from the stomach of a goat, known for being a powerful antidote to most poisons." },
+            C1: { question: "Where, then, would you look if I told you to find me a bezoar?", options: ["In the Restricted Section", "In the stomach of a goat", "In a dragon's liver", "In a mermaid's purse"], correctAnswer: "In the stomach of a goat", explanation: "A bezoar is a stone-like mass taken from the stomach of a goat, known for being a powerful antidote to most poisons." },
+            reward: { type: 'trigger_puzzle', puzzle: 'potionsQuestion3', successMessage: "'Precisely. From the stomach of a goat. And what is the difference...'" },
+            failureMessage: "'Incorrect. I see you haven't opened a book.' Snape turns away from you."
+        },
+        'potionsQuestion3': {
+            A2: { question: "Are monkshood and wolfsbane the same?", options: ["Yes", "No", "Sometimes", "Only on a full moon"], correctAnswer: "Yes", explanation: "Monkshood and wolfsbane are the same plant, which also goes by the name of aconite." },
+            B1: { question: "What is the difference between monkshood and wolfsbane?", options: ["One is a plant, the other a potion", "One is poison, the other is not", "They are the same plant", "They grow in different climates"], correctAnswer: "They are the same plant", explanation: "This is a trick question. Monkshood and wolfsbane are two different names for the same plant, which is also called aconite." },
+            B2: { question: "What is the difference between monkshood and wolfsbane?", options: ["One is a plant, the other a potion", "One is poison, the other is not", "They are the same plant", "They grow in different climates"], correctAnswer: "They are the same plant", explanation: "This is a trick question. Monkshood and wolfsbane are two different names for the same plant, which is also called aconite." },
+            C1: { question: "What is the difference between monkshood and wolfsbane?", options: ["One is a plant, the other a potion", "One is poison, the other is not", "They are the same plant", "They grow in different climates"], correctAnswer: "They are the same plant", explanation: "This is a trick question. Monkshood and wolfsbane are two different names for the same plant, which is also called aconite." },
+            reward: { type: 'flag_set', flag: 'potions_quiz_passed', successMessage: "'They are the same plant. Very good. Don't get complacent.' Snape sweeps away, leaving you with a grudging respect." },
+            failureMessage: "'A foolish answer. Pity.' Snape dismisses you with a wave of his hand."
+        },
+        'flyingLesson': {
+            A2: { question: "Madam Hooch tells you to say a word. What word?", options: ["Go", "Fly", "Up", "Float"], correctAnswer: "Up", explanation: "This is a reading comprehension question from the book. The first command a student gives their broom is a sharp, clear 'Up!'" },
+            B1: { question: "To make the broom fly into your hand, your command must be:", options: ["A polite request", "A confident command", "A quiet whisper", "A long sentence"], correctAnswer: "A confident command", explanation: "Madam Hooch stresses the importance of intent and confidence in magic. The command must be given with conviction, not hesitation. 'A confident command' is the best description." },
+            B2: { question: "The broom 'jumped' into your hand. Which of these words is a synonym for 'jumped' in this context?", options: ["Rolled", "Slid", "Leapt", "Fell"], correctAnswer: "Leapt", explanation: "'To leap' means to jump or spring a long way, to a great height, or with great force. It perfectly captures the sudden, energetic movement of the broom rising from the ground." },
+            C1: { question: "Which sentence best captures the feeling of the broom responding to your will for the first time?", options: ["The broom came up when I said the word.", "The broom responded to my command.", "It was a strange feeling as the wood of the broom vibrated, then surged upwards, connecting with my hand as if it were a living extension of my own intent.", "The magical broom flew up."], correctAnswer: "It was a strange feeling as the wood of the broom vibrated, then surged upwards, connecting with my hand as if it were a living extension of my own intent.", explanation: "This sentence uses strong sensory details ('vibrated', 'surged upwards'), figurative language ('living extension of my own intent'), and evocative vocabulary to create a powerful and descriptive image, far more than the other, simpler options." },
+            reward: { type: 'flag_set', flag: 'knows_flying', successMessage: "You stare down at the broom and shout 'UP!'. It immediately jumps into your hand. Madam Hooch gives a rare smile. 'Very good, Potter.' You now have a feel for handling a broom." },
+            failureMessage: "You say the word, but the broom just twitches and lies still. 'Not enough conviction!' barks Madam Hooch."
+        },
+        'filchEncounter': {
+            A2: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            B1: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            B2: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            C1: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            reward: { type: 'move_to', room: 'thirdFloorCorridor', successMessage: "You quickly throw the invisibility cloak over yourself. A moment later, Filch shuffles past, grumbling to his cat, Mrs. Norris. Neither of them notices you. You silently slip up the stairs." },
+            failureMessage: "You take a step towards the stairs, but a wheezing voice calls out 'Who's there?!'. You've been spotted! You quickly retreat before you get detention."
+        },
+        'greatHallSorting': {
+            A2: { correctAnswer: '', explanation: "In the magical world, some objects, like the Sorting Hat, have a will of their own. Interacting with them can reveal their purpose." },
+            B1: { correctAnswer: '', explanation: "In the magical world, some objects, like the Sorting Hat, have a will of their own. Interacting with them can reveal their purpose." },
+            B2: { correctAnswer: '', explanation: "In the magical world, some objects, like the Sorting Hat, have a will of their own. Interacting with them can reveal their purpose." },
+            C1: { correctAnswer: '', explanation: "In the magical world, some objects, like the Sorting Hat, have a will of their own. Interacting with them can reveal their purpose." },
+            reward: { type: 'flag_set', flag: 'sorted', successMessage: "Professor McGonagall calls your name. The Sorting Hat is placed on your head. After a moment, it shouts 'GRYFFINDOR!'. Before you join the celebrating Gryffindor table, a prefect tells you the password to the common room is 'Caput Draconis'." },
+        },
+        'wandChoice': {
+            A2: {
+                question: "Ollivander gives you a wand. It feels...",
+                options: ["Good", "Bad", "Cold", "Warm"],
+                correctAnswer: "Warm",
+                explanation: "This is a reading comprehension and vocabulary question. In the story, the wand that chooses the wizard often gives a sign of connection, described as a warm feeling."
+            },
+            B1: {
+                question: "Ollivander says, 'The wand chooses the wizard.' This sentence is in the:",
+                options: ["Past Simple", "Present Simple", "Future Simple", "Present Continuous"],
+                correctAnswer: "Present Simple",
+                explanation: "The Present Simple tense is used for general truths, facts, and habits. Ollivander is stating a fundamental rule of magic, which is considered a general truth."
+            },
+            B2: {
+                question: "A phoenix feather is inside your wand. Which sentence is grammatically correct?",
+                options: ["There is a phoenix's feather.", "There is a phoenixes feather.", "There is a phoenixes' feather.", "There are a phoenix's feather."],
+                correctAnswer: "There is a phoenix's feather.",
+                explanation: "To show possession for a singular noun (phoenix), we add an apostrophe + s ('s). 'Phoenixes' is the plural, 'phoenixes'' is the plural possessive, and 'There are' is incorrect subject-verb agreement for a single feather."
+            },
+            C1: {
+                question: "Your wand and Voldemort's are 'brothers' because their cores come from the same phoenix. This shared origin is a literary device known as:",
+                options: ["A plot hole", "A MacGuffin", "A motif", "An antagonist"],
+                correctAnswer: "A motif",
+                explanation: "A motif is a recurring element, image, or idea in a literary work that has symbolic significance. The connection between the two wands is a powerful motif that reappears throughout the series."
+            },
+            reward: { type: 'flag_set', flag: 'has_wand', successMessage: "A shower of red and gold sparks erupts from the wand's tip. It feels warm in your hand. 'Curious,' says Ollivander. 'Very curious.' You have your wand!"},
+            failureMessage: "Ollivander snatches the wand back. 'No, no, definitely not.' He searches for another box."
+        },
+        'charmsLesson': {
+            A2: {
+                question: "Professor Flitwick tells you the magic words are 'Wingardium Leviosa'. What are you doing with the words?",
+                options: ["Eating them", "Saying them", "Touching them", "Hearing them"],
+                correctAnswer: "Saying them",
+                explanation: "This is a vocabulary question about actions. To cast a spell, you must say the magic words. The verb 'to say' means to speak words."
+            },
+            B1: {
+                question: "Which of these describes the wand movement 'swish and flick'?",
+                options: ["A long curve and a sharp jab", "A circle and a tap", "A straight line and a wave", "Up and down"],
+                correctAnswer: "A long curve and a sharp jab",
+                explanation: "This is a vocabulary question based on physical actions. A 'swish' is a smooth, curving movement. A 'flick' is a short, quick movement. 'A long curve and a sharp jab' is the best description of this."
+            },
+            B2: {
+                question: "Hermione says, 'You're saying it wrong. It's Levi-O-sa, not Levio-SAR.' Her correction is about:",
+                options: ["Pronunciation", "Grammar", "Vocabulary", "Spelling"],
+                correctAnswer: "Pronunciation",
+                explanation: "'Pronunciation' refers to the way in which a word is spoken. Hermione is correcting the sound and emphasis of the syllables, which is a matter of pronunciation, crucial for magic."
+            },
+            C1: {
+                question: "If you perform the charm correctly, the feather will levitate. 'Levitate' means to:",
+                options: ["Burn with a bright light", "Change color rapidly", "Rise and float in the air", "Shrink to a tiny size"],
+                correctAnswer: "Rise and float in the air",
+                explanation: "This is a vocabulary question. The verb 'to levitate' means to rise or cause to rise and float in the air, seemingly in defiance of gravity."
+            },
+            reward: { type: 'flag_set', flag: 'knows_leviosa', successMessage: "You try again, focusing on the movement and the pronunciation. 'Wingardium Leviosa!' The feather on your desk trembles and lifts into the air! You've done it!" },
+            failureMessage: "You swish and flick, but the feather just rolls over. 'Not quite,' squeaks Professor Flitwick."
+        },
+        'diagonAlleyWall': {
+            A2: {
+                question: "Hagrid says to tap the bricks in the correct order. Which word means 'in a sequence'?",
+                options: ["Correctly", "Quickly", "Carefully", "Gently"],
+                correctAnswer: "Correctly",
+                explanation: "'Correctly' is an adverb that means in the right way. Tapping the bricks in the correct sequence or order is necessary for the magic to work."
+            },
+            B1: {
+                question: "The instructions are a sequence of actions. Which sentence structure is best for giving instructions?",
+                options: ["You would tap the brick.", "The brick was tapped by you.", "Tapping the brick.", "Tap the brick."],
+                correctAnswer: "Tap the brick.",
+                explanation: "The Imperative mood (e.g., 'Tap the brick.') is used to give direct orders and instructions. It's clear and concise."
+            },
+            B2: {
+                question: "Complete the instruction: 'Count three bricks up, ___ go two across.'",
+                options: ["and then", "after that", "so", "because"],
+                correctAnswer: "and then",
+                explanation: "'And then' is a common and clear conjunction used to link sequential steps in instructions. 'After that' also works, but 'and then' is very frequent in spoken instructions."
+            },
+            C1: {
+                question: "Which sentence most precisely describes the wall's transformation?",
+                options: ["The wall is opening.", "The wall, which was solid, began to reconfigure itself.", "The wall opened.", "The wall might open."],
+                correctAnswer: "The wall, which was solid, began to reconfigure itself.",
+                explanation: "'Reconfigure' is a more precise and sophisticated verb than 'open'. The use of a non-defining relative clause ('which was solid') adds important detail, making the sentence more descriptive and advanced."
+            },
+            reward: { type: 'move_to', room: 'diagonAlley', successMessage: "You watch as Hagrid taps the bricks. A small hole appears, and it grows wider and wider until you are looking at an archway onto a cobbled street." },
+            failureMessage: "You tap a few random bricks, but nothing happens. It seems to be a specific pattern."
+        },
+        'gringottsKey': {
+            A2: {
+                question: "Griphook needs the key. You say, 'I ___ the key.'",
+                options: ["has", "is", "are", "have"],
+                correctAnswer: "have",
+                explanation: "With the subject 'I', the correct present tense form of the verb 'to have' is 'have'. We say 'I have', 'you have', 'he/she/it has'."
+            },
+            B1: {
+                question: "Which is the most polite way to present the key?",
+                options: ["Here's the key.", "Give me my money.", "The key is here.", "I demand to go to my vault."],
+                correctAnswer: "Here's the key.",
+                explanation: "'Here's...' or 'Here is...' is a standard polite phrase used when giving something to someone. The other options are either demanding or less direct."
+            },
+            B2: {
+                question: "Griphook says, 'The key must be presented for entry.' This is an example of:",
+                options: ["Active voice", "Passive voice", "An imperative", "A suggestion"],
+                correctAnswer: "Passive voice",
+                explanation: "In the passive voice, the subject of the sentence receives the action. Here, 'The key' is the subject, and it is being 'presented'. The person doing the presenting is not the focus. The active form would be 'You must present the key'."
+            },
+            C1: {
+                question: "Which sentence implies the key is a necessary but not sufficient condition for entry?",
+                options: ["Only with the key can you enter.", "You must have the key to enter.", "Entry is contingent upon presentation of the key, among other security protocols.", "If you have the key, you can enter."],
+                correctAnswer: "Entry is contingent upon presentation of the key, among other security protocols.",
+                explanation: "'Contingent upon' means 'depending on'. The phrase 'among other... protocols' explicitly states that the key is just one of several requirements, making it necessary but not sufficient (not enough on its own)."
+            },
+            reward: { type: 'move_to', room: 'vault687', successMessage: "You hand the key to Griphook. He inspects it and nods. 'Very well. Follow me.' He leads you to a cart that speeds down a winding track into the depths of the bank." },
+            failureMessage: "Griphook looks at you impatiently. 'The key, please.'"
+        },
+        'platformBarrier': {
+            A2: {
+                question: "Mrs. Weasley tells you what to do. 'You ___ run at the wall.'",
+                options: ["must to", "have to", "should to", "are"],
+                correctAnswer: "have to",
+                explanation: "The modal expression 'have to' is used to show strong obligation, especially when the obligation comes from an external source (like instructions). It is followed by the base form of the verb ('run'). 'Must to' and 'should to' are grammatically incorrect."
+            },
+            B1: {
+                question: "What is the best way to ask for clarification if you are nervous?",
+                options: ["Explain again?", "Are you quite sure about that?", "What?", "You want me to run at a wall?"],
+                correctAnswer: "Are you quite sure about that?",
+                explanation: "'Are you quite sure...?' is a polite way to express doubt or ask for confirmation. It's less confrontational than 'You want me to...?' and more complete than the other, very informal options."
+            },
+            B2: {
+                question: "You are feeling nervous. Which sentence best expresses this feeling using more advanced vocabulary?",
+                options: ["Running at walls is being scary.", "I have some trepidation about this.", "This is a bit bad.", "I am scared."],
+                correctAnswer: "I have some trepidation about this.",
+                explanation: "'Trepidation' is a noun that means a feeling of fear or agitation about something that may happen. It's a more formal and descriptive word than 'scared'."
+            },
+            C1: {
+                question: "Which literary device is being used when a solid, mundane object like a wall acts as a gateway to a magical world?",
+                options: ["Metaphor", "Juxtaposition", "Personification", "Paradox"],
+                correctAnswer: "Juxtaposition",
+                explanation: "Juxtaposition is the act of placing two elements side-by-side to compare or contrast them. Here, the ordinary (a brick wall at a train station) is placed directly against the extraordinary (a portal to a magical world), creating a powerful effect."
+            },
+            reward: { type: 'move_to', room: 'hogwartsExpress', successMessage: "You take a deep breath, close your eyes, and run. Instead of crashing, you pass straight through the barrier and emerge onto a crowded platform next to a scarlet steam engine. You've made it!" },
+            failureMessage: "You hesitate. The idea of running into a solid brick wall seems insane."
+        },
+        'hagridTrust': {
+            A2: {
+                question: "Hagrid says, 'Yeh're a wizard, Harry.' How would you ask a question about this?",
+                options: ["A wizard I am?", "Wizard, me?", "Am I a wizard?", "I am a wizard?"],
+                correctAnswer: "Am I a wizard?",
+                explanation: "To form a question from a statement with the verb 'to be' (like 'You are a wizard'), we invert the subject and the verb. 'You are' becomes 'Am I?' (adjusting for the change from 'you' to 'I')."
+            },
+            B1: {
+                question: "Hagrid says, 'I haven't seen you since you was a baby.' Which part is informal/incorrect grammar?",
+                options: ["I haven't seen you", "since you was a baby", "No error"],
+                correctAnswer: "since you was a baby",
+                explanation: "The subject 'you' always takes the plural verb form, even when it refers to one person. The correct past tense of 'to be' for 'you' is 'were', not 'was'. The correct sentence is '...since you were a baby'."
+            },
+            B2: {
+                question: "Convert Hagrid's statement to reported speech: Hagrid said, 'I'm taking you to Hogwarts.'",
+                options: ["Hagrid said he is taking me to Hogwarts.", "Hagrid said I was taking him to Hogwarts.", "Hagrid said that he was taking me to Hogwarts."],
+                correctAnswer: "Hagrid said that he was taking me to Hogwarts.",
+                explanation: "In reported (or indirect) speech, we often shift the tense back. The Present Continuous ('am taking') becomes the Past Continuous ('was taking'). Pronouns also change: 'I' becomes 'he', and 'you' becomes 'me'."
+            },
+            C1: {
+                question: "Which sentence best captures the hypothetical situation of refusing Hagrid's offer in the past?",
+                options: ["If I will refuse, I will stay here.", "Had I refused, I would have stayed here.", "If I refuse, I stay here.", "If I would refuse, I would stay here."],
+                correctAnswer: "Had I refused, I would have stayed here.",
+                explanation: "This is an example of the Third Conditional, used for unreal past situations. The structure is 'If + past perfect, ...would have + past participle'. 'Had I refused...' is a common inversion of 'If I had refused...' and has the same meaning."
+            },
+            reward: { type: 'move_to', room: 'leakyCauldron', successMessage: "You decide to trust Hagrid. He nods, and with a swirl of his coat, you feel a strange pulling sensation. The dingy hut disappears, replaced by a dark, bustling pub." },
+            failureMessage: "Hagrid looks a bit disappointed. 'C'mon Harry, yeh've got to trust me.'"
+        },
+        'cupboardDoor': {
+            A2: {
+                question: "To open the door, you need to use the correct preposition. 'The key goes ___ the lock.'",
+                options: ["on", "in", "at", "with"],
+                correctAnswer: "in",
+                explanation: "We use the preposition 'in' to show that something is entering a space. The key enters the space inside the lock. 'On' is for surfaces, 'at' is for a specific point, and 'with' is used to show accompaniment."
+            },
+            B1: {
+                question: "Which sentence is grammatically correct for expressing a wish about the present?",
+                options: ["I wish the door will open.", "I wish the door would open.", "I wish the door has opened.", "I wish the door opens."],
+                correctAnswer: "I wish the door would open.",
+                explanation: "To express a wish about a present situation that we want to be different, we use 'I wish + subject + would + verb' for actions, or 'I wish + subject + past simple' for states. 'I wish it would open' expresses a desire for a future action based on a present feeling. 'Will' is incorrect for wishes."
+            },
+            B2: {
+                question: "Complete the sentence with the most appropriate phrasal verb: 'You need to ___ how to open this lock.'",
+                options: ["make out", "get by", "figure out", "look up"],
+                correctAnswer: "figure out",
+                explanation: "'Figure out' means to understand or find a solution to a problem. 'Make out' means to see or hear something with difficulty, 'get by' means to manage with little money, and 'look up' means to search for information."
+            },
+            C1: {
+                question: "Which of the following is an example of the subjunctive mood to express a hypothetical situation?",
+                options: ["I hope the door opens.", "The door will be opened.", "If I were to open the door, I would be free.", "Opening the door is my primary objective."],
+                correctAnswer: "If I were to open the door, I would be free.",
+                explanation: "The subjunctive mood is used for hypothetical or non-real situations. The phrase 'If I were...' is a classic example of the subjunctive, used here to talk about an unlikely or imaginary event. The other options are indicative (stating facts or beliefs) or imperative."
+            },
+            reward: { type: 'move_to', room: 'privetDriveHallway', successMessage: "With a click, the lock turns! Aunt Petunia opens the door with a shriek. 'Up! Get up! Now!'" },
+            failureMessage: "That doesn't seem to work. The lock remains stubbornly shut."
+        },
+        'fatLadyPassword': {
+            A2: {
+                question: "What is the password? (Hint: re-read the description for the Great Hall)",
+                options: ["Open Sesame", "Friend", "Caput Draconis", "Password"],
+                correctAnswer: "Caput Draconis",
+                explanation: "This is a reading comprehension question. The text for the Great Hall states the password is 'Caput Draconis'. It's important to pay attention to details in the story!"
+            },
+            B1: {
+                question: "The prefect says you must state the password 'clearly'. The word 'clearly' is:",
+                options: ["An adjective", "An adverb", "A noun", "A verb"],
+                correctAnswer: "An adverb",
+                explanation: "Adverbs describe verbs. 'Clearly' describes *how* you should state the password (the verb 'state'). Adjectives describe nouns. 'Clear' is the adjective form."
+            },
+            B2: {
+                question: "If you forget the password, what is the most polite way to ask a prefect?",
+                options: ["What's the password again?", "Could you please remind me of the password?", "Tell me the password.", "Password?"],
+                correctAnswer: "Could you please remind me of the password?",
+                explanation: "'Could you please...?' is a formal and polite way to make a request. 'Tell me...' is an impolite command. 'What's the password again?' is too informal for a prefect, and 'Password?' is very rude."
+            },
+            C1: {
+                question: "The portrait of the Fat Lady acts as a sentient guardian. The literary term for giving human qualities to an inanimate object is:",
+                options: ["Simile", "Metaphor", "Personification", "Alliteration"],
+                correctAnswer: "Personification",
+                explanation: "Personification is a figure of speech where human attributes are given to an animal, an inanimate object, or an abstract idea. A painting that can talk and think is a perfect example."
+            },
+            reward: { type: 'move_to', room: 'gryffindorCommonRoom', successMessage: "You say 'Caput Draconis'. The Fat Lady smiles. 'Very well,' she says, and her portrait swings open to reveal a hole in the wall." },
+            failureMessage: "The Fat Lady looks at you sternly. 'That is not the correct password.'"
+        },
+        'trollEncounter': {
+            A2: {
+                question: "Ron shouts a command. '___ the spell!'",
+                options: ["You do", "Doing", "To do", "Do"],
+                correctAnswer: "Do",
+                explanation: "For commands or instructions (the imperative form), we use the base form of the verb without a subject. 'Do the spell!' is a direct command."
+            },
+            B1: {
+                question: "To make the club float, you should say 'Wingardium Leviosa'. Which syllable should be emphasized?",
+                options: ["Wing-GAR-dium", "Levi-O-sa", "There is no emphasis.", "Both equally."],
+                correctAnswer: "Levi-O-sa",
+                explanation: "This is a key plot point from the book and movie. Hermione corrects Ron by saying, 'It's Levi-O-sa, not Levio-SAR!' Proper pronunciation and emphasis are crucial for casting spells correctly."
+            },
+            B2: {
+                question: "Complete the sentence: 'The spell caused the troll's club to ___ out of its hand.'",
+                options: ["flew", "flown", "fly", "flying"],
+                correctAnswer: "fly",
+                explanation: "After causative verbs like 'make', 'let', and 'have', we use the bare infinitive (the verb without 'to'). The structure is 'cause someone/something to do something'. Therefore, 'caused the club to fly' is correct."
+            },
+            C1: {
+                question: "Which sentence uses the most vivid and active verbs to describe the scene?",
+                options: ["The troll was hit by the club.", "The club fell on the troll's head.", "The levitated club hovered precariously, then plummeted, striking the troll with a sickening crunch.", "The troll got knocked out."],
+                correctAnswer: "The levitated club hovered precariously, then plummeted, striking the troll with a sickening crunch.",
+                explanation: "Strong, active verbs create more engaging and descriptive writing. 'Hovered', 'plummeted', 'striking' are much more powerful and create a clearer mental image than the passive ('was hit') or simple verbs ('fell', 'got')."
+            },
+            // [LOGIC CHANGE] Set the troll_defeated flag upon success.
+            reward: { type: 'flag_set', flag: 'troll_defeated', successMessage: "You shout 'Wingardium Leviosa!' and flick your wand. The troll's own club rises into the air, wobbles, and then drops right on its head. The troll sways and collapses with a floor-shaking thud. You've saved Hermione!" },
+            failureMessage: "You try to cast the spell, but nothing happens! The troll raises its club higher."
+        },
+        'fluffyDoor': {
+             A2: { correctAnswer: '', explanation: "Some magical creatures have weaknesses that can be exploited. Music is known to soothe savage beasts." },
+             B1: { correctAnswer: '', explanation: "Some magical creatures have weaknesses that can be exploited. Music is known to soothe savage beasts." },
+             B2: { correctAnswer: '', explanation: "Some magical creatures have weaknesses that can be exploited. Music is known to soothe savage beasts." },
+             C1: { correctAnswer: '', explanation: "Some magical creatures have weaknesses that can be exploited. Music is known to soothe savage beasts." },
+             reward: { type: 'move_to', room: 'trapdoorRoom', successMessage: "The door clicks open. You carefully push its giant paw aside and lift the heavy trapdoor, revealing a dark hole. You climb down." },
+             failureMessage: "You try to sneak past, but one of the heads opens a sleepy eye. A low growl rumbles in its chest."
+        },
+        'devilsSnare': {
+            A2: {
+                question: "Hermione shouts the plant's weakness. 'It ___ the dark and damp.'",
+                options: ["like", "likes", "is liking", "are liking"],
+                correctAnswer: "likes",
+                explanation: "In the Present Simple tense, for third-person singular subjects (he, she, it), we add -s to the verb. So, 'it likes'. We don't typically use 'like' in the continuous form ('is liking')."
+            },
+            B1: {
+                question: "To fight it, you need the opposite of dark. Which is the best spell?",
+                options: ["A spell for water.", "A spell for wind.", "A spell for fire or light.", "A spell for making things quiet."],
+                correctAnswer: "A spell for fire or light.",
+                explanation: "This is a logic and comprehension question. The text states the plant likes the dark, so the logical opposite to use against it would be light or something that produces light, like fire."
+            },
+            B2: {
+                question: "Hermione panics, 'I can't remember any fire spells!' You should tell her to:",
+                options: ["calming down", "calm down", "becoming calm", "calms down"],
+                correctAnswer: "calm down",
+                explanation: "When giving a direct command or suggestion (the imperative), we use the base form of the verb. 'Calm down' is the correct imperative phrase."
+            },
+            C1: {
+                question: "Complete the First Conditional sentence: 'If Hermione ___, the plant will retreat.'",
+                options: ["had cast", "casts", "would cast", "cast"],
+                correctAnswer: "casts",
+                explanation: "The First Conditional is used for real possibilities in the future. The structure is 'If + Present Simple, ... will + base verb'. So, 'If Hermione casts...'"
+            },
+            reward: { type: 'move_to', room: 'flyingKeysRoom', successMessage: "Hermione remembers a spell! 'Lumos Solem!' A jet of brilliant sunlight erupts from her wand. The Devil's Snare recoils from the light and heat, releasing you all. You tumble through to the next chamber." },
+            failureMessage: "You struggle, but the vines only tighten their grip. 'You have to relax!' Hermione cries."
+        },
+        'flyingKey': {
+            A2: {
+                question: "The key you need has a broken wing. It is more ___ than the others.",
+                options: ["shiny", "fast", "slow", "heavy"],
+                correctAnswer: "slow",
+                explanation: "This is a logic and vocabulary question. A broken wing would impede its flight, making it 'slow' compared to the other keys with intact wings."
+            },
+            B1: {
+                question: "Which sentence uses the correct relative pronoun to describe the key?",
+                options: ["I need the key who has a broken wing.", "I need the key where has a broken wing.", "I need the key which has a broken wing."],
+                correctAnswer: "I need the key which has a broken wing.",
+                explanation: "The relative pronoun 'which' (or 'that') is used to refer to things. 'Who' is used for people, and 'where' is used for places."
+            },
+            B2: {
+                question: "To catch the key, you'll need to be fast. Which is an adverb of manner?",
+                options: ["Quick", "Quickly", "Quicken", "Quickness"],
+                correctAnswer: "Quickly",
+                explanation: "An adverb of manner describes *how* an action is done. They often end in '-ly'. You need to fly quickly. 'Quick' is the adjective, 'quicken' is the verb, and 'quickness' is the noun."
+            },
+            C1: {
+                question: "Which sentence is the most evocative and uses dynamic language to describe the chase?",
+                options: ["I flew fast on the broom and got the key.", "The key was hard to catch.", "I urged the broom onward, weaving through the whirlwind of silver wings, my fingers closing around the cold metal of the correct key just as it tried to dart away.", "I got on the broom to get the key from the other keys."],
+                correctAnswer: "I urged the broom onward, weaving through the whirlwind of silver wings, my fingers closing around the cold metal of the correct key just as it tried to dart away.",
+                explanation: "Evocative language uses strong verbs ('urged', 'weaving', 'closing', 'dart'), descriptive adjectives ('whirlwind', 'silver', 'cold'), and sensory details to create a vivid picture for the reader. The other options are much more simplistic and less engaging."
+            },
+            reward: { type: 'move_to', room: 'chessChamber', successMessage: "You kick off on the broom, soaring into the air. After a thrilling chase, you snatch the old, silver key with the battered wing out of the air. It fits the lock perfectly!" },
+            failureMessage: "You grab a key at random, but it doesn't fit the lock. The correct key is too nimble to catch with your bare hands!"
+        },
+        'chessPuzzle': {
+            A2: {
+                question: "Ron says 'We ___ to play.' What is the missing word?",
+                options: ["is", "are", "have", "must"],
+                correctAnswer: "have",
+                explanation: "The expression 'have to' is used to show obligation or necessity, similar to 'must'. Since the subject is 'We', the correct form is 'have'. 'We have to play.'"
+            },
+            B1: {
+                question: "To win, Ron must let the Queen take him. How would he express this intention for the future?",
+                options: ["I will be letting the Queen take me.", "I am going to let the Queen take me.", "I am taken by the Queen.", "I was letting the Queen take me."],
+                correctAnswer: "I am going to let the Queen take me.",
+                explanation: "'Be going to' is used to express a future plan or intention that has already been decided. Ron has made a decision, so this is the most appropriate form. 'Will' is for spontaneous decisions, and the others are the wrong tense."
+            },
+            B2: {
+                question: "Which sentence correctly connects the two ideas (Ron's sacrifice and the victory)?",
+                options: ["Ron's move, despite being a sacrifice, was ultimately what has led to their victory.", "Ron's move was a sacrifice, which led to their victory.", "Because Ron's move was a sacrifice, so they won.", "Ron's move led to their victory and it was a sacrifice."],
+                correctAnswer: "Ron's move was a sacrifice, which led to their victory.",
+                explanation: "A non-defining relative clause using ', which' is perfect here. It adds extra information about 'the sacrifice' without being essential to the sentence's main meaning. Using both 'Because' and 'so' is redundant and incorrect."
+            },
+            C1: {
+                question: "The situation requires a 'Pyrrhic victory' - a win that comes at a great cost. Which sentence best defines this concept?",
+                options: ["A victory where the losses are so devastating, it is tantamount to defeat.", "A victory that is achieved very easily.", "A victory that is not really a victory at all.", "A victory that ensures no one gets hurt."],
+                correctAnswer: "A victory where the losses are so devastating, it is tantamount to defeat.",
+                explanation: "This is a vocabulary question about the specific idiom 'Pyrrhic victory'. It originates from King Pyrrhus of Epirus, whose army suffered irreplaceable casualties in defeating the Romans. The correct definition is a victory that comes at such a high price it feels like a loss."
+            },
+            reward: {
+                type: 'move_to',
+                room: 'potionsRiddleRoom',
+                successMessage: (flags) => {
+                    if (flags.ron_saved_by_soldiers) {
+                        return "Ron uses your enchanted toy soldiers for the final sacrifice. The stone Queen smashes them to pieces, but it gives you the opening! You checkmate the king. The black king throws down his crown, and the remaining pieces bow. 'That was amazing!' Ron says, unharmed. You run to the next door together.";
+                    } else {
+                        return "Ron directs the game with incredible skill. Finally, he sees the only way to win. He sacrifices himself, and the white queen strikes him down. He falls to the floor, motionless. The sacrifice allows you to checkmate the king. The black king throws down his crown. You and Hermione run to the next door, leaving Ron behind.";
+                    }
+                }
+            },
+            failureMessage: "You make a move, but the giant stone Queen smashes your piece to dust. This is more dangerous than you thought."
+        },
+        'potionsRiddle': {
+            A2: {
+                question: "The riddle says one potion will move you forward. What does 'forward' mean?",
+                options: ["Back", "Ahead", "Stop", "Around"],
+                correctAnswer: "Ahead",
+                explanation: "'Forward' is a directional adverb that means in the direction that one is facing or traveling. 'Ahead' is a direct synonym in this context."
+            },
+            B1: {
+                question: "The riddle uses comparative adjectives to compare potions. Which is the correct comparative form of 'small'?",
+                options: ["More small", "Smaller", "Smallest", "As small"],
+                correctAnswer: "Smaller",
+                explanation: "For short, one-syllable adjectives like 'small', we form the comparative by adding -er at the end ('smaller') and the superlative by adding -est ('smallest'). 'More small' is incorrect."
+            },
+            B2: {
+                question: "'One will let you safely through, another will transport you back.' The modal verb 'will' in these sentences expresses:",
+                options: ["Certainty", "Possibility", "Obligation", "Speculation"],
+                correctAnswer: "Certainty",
+                explanation: "In this context, the riddle is stating a fact about the potions' functions. The modal verb 'will' is used to express certainty or a definite future outcome. It's not a possibility; it is a guaranteed result."
+            },
+            C1: {
+                question: "The riddle is a logic puzzle that requires a process of elimination. This process is also known as:",
+                options: ["Inductive reasoning", "Abductive reasoning", "Circular reasoning", "Deductive reasoning"],
+                correctAnswer: "Deductive reasoning",
+                explanation: "Deductive reasoning is a logical process where you reach a conclusion by starting with a general set of rules or premises and then working towards a specific conclusion. Eliminating possibilities based on the riddle's clues is a classic example of deduction."
+            },
+            reward: { type: 'move_to', room: 'finalChamber', successMessage: "You carefully read the riddle, eliminating the poisons and the potion to go back. You pick up the smallest bottle, which contains the potion to move ahead. You drink it, and feel a cold sensation as you step through the purple flames unharmed." },
+            failureMessage: "You look at the bottles, confused. Choosing the wrong one could be your last mistake."
+        }
+    },
+
+    open() {
+        // Reset the game state and UI completely when opening the hub.
+        this.gameState = {};
+        this.activePuzzle = null;
+        const modal = document.getElementById('text-adventure-modal');
+        const modalContent = document.querySelector('#text-adventure-modal .modal-content');
+
+        // Restore the initial start screen content.
+        modalContent.id = 'text-adventure-modal-content'; // Reset ID to its original state
+        modalContent.innerHTML = `
+            <div id="ta-start-screen" class="p-6 text-center">
+                <span class="modal-close-btn" onclick="TextAdventure.close()">&times;</span>
+                <h3 class="font-magic-header text-3xl text-[#FFD700] mb-4">Harry Potter and the Philosopher's Stone</h3>
+                <p class="mb-6 text-gray-300">This is a text-based adventure that will test your knowledge of the English language. Please select your proficiency level to begin.</p>
+                <div class="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+                    <button class="btn btn-gold" onclick="TextAdventure.startGame('A2')">A2 (Beginner)</button>
+                    <button class="btn btn-gold" onclick="TextAdventure.startGame('B1')">B1 (Intermediate)</button>
+                    <button class="btn btn-gold" onclick="TextAdventure.startGame('B2')">B2 (Upper-Intermediate)</button>
+                    <button class="btn btn-gold" onclick="TextAdventure.startGame('C1')">C1 (Advanced)</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-6">This game is a fan-made tribute and is not affiliated with J.K. Rowling, Warner Bros., or their affiliates.</p>
+            </div>`;
+        modal.classList.add('show');
+    },
+
+    close() {
+        document.getElementById('text-adventure-modal').classList.remove('show');
+        // Clean up to be safe
+        this.gameState = {};
+        this.activePuzzle = null;
+    },
+
+    startGame(difficulty) {
+        this.gameState = {
+            currentRoom: 'cupboardUnderStairs',
+            previousRoom: 'cupboardUnderStairs',
+            inventory: [],
+            flags: {},
+            difficulty: difficulty
+        };
+        this.renderGameUI();
+        this.renderRoom();
+    },
+
+    renderGameUI() {
+        const modalContent = document.querySelector('#text-adventure-modal .modal-content');
+        modalContent.id = 'ta-modal-content'; // Ensure the ID is correct for styling
+        modalContent.innerHTML = `
+            <div class="flex-shrink-0 p-2 bg-[#1A2B3C] border-b-2 border-[#FFD700] flex justify-between items-center">
+                 <div id="rule-explanation-container" class="flex-grow"></div>
+                 <div class="flex gap-2">
+                    <button class="btn btn-gold text-sm" onclick="TextAdventure.showHint()">Hint</button>
+                    <button class="btn btn-destructive text-sm" onclick="TextAdventure.close()">Close Adventure</button>
+                </div>
+            </div>
+            <div id="ta-output" class="flex-grow p-4 md:p-6 overflow-y-auto"></div>
+            <div id="inventory-display" class="flex-shrink-0 p-2 bg-[#0C1C33] border-t border-gray-700 min-h-[60px]"></div>
+            <div class="flex-shrink-0 p-4 bg-[#1A2B3C] border-t-2 border-[#FFD700]">
+                <div class="flex items-center gap-4">
+                    <span class="font-bold text-[#FFD700]">&gt;</span>
+                    <input type="text" id="ta-input" placeholder="Type your command..." class="w-full p-2 rounded" autocomplete="off">
+                </div>
+            </div>
+        `;
+        document.getElementById('ta-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { this.processInput(); }
+        });
+        document.getElementById('ta-input').focus();
+        this.renderInventory(); // Initial inventory render
+    },
+
+    showHint() {
+        let hint = this.hintData[this.gameState.currentRoom];
+        if (typeof hint === 'function') {
+            hint = hint(this.gameState.flags);
+        }
+        if (!hint) {
+            hint = this.hintData.default;
+        }
+        this.renderOutput(`Hint: ${hint}`, 'info');
+    },
+
+    processInput() {
+        const inputField = document.getElementById('ta-input');
+        const command = inputField.value.trim().toLowerCase();
+        if (!command) return;
+
+        document.getElementById('rule-explanation-container').innerHTML = '';
+
+        this.renderOutput(`> ${command}`, 'command');
+        inputField.value = '';
+
+        const [verb, ...rest] = command.split(' ');
+        const noun = rest.join(' ');
+
+        const movementAliases = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west' };
+        if (Object.keys(movementAliases).includes(verb) || Object.values(movementAliases).includes(verb)) {
+            this.handleMove(movementAliases[verb] || verb);
+        } else {
+            switch (verb) {
+                case 'go': this.handleMove(noun); break;
+                case 'look': this.handleExamine(noun || 'room'); break;
+                case 'examine': case 'x': case 'read': this.handleExamine(noun); break;
+                case 'take': case 'get': this.handleTake(noun); break;
+                case 'i': case 'inventory': this.renderInventory(true); break;
+                case 'help': this.renderHelp(); break;
+                case 'open': this.handleOpen(noun); break;
+                case 'use': this.handleUse(noun); break;
+                case 'cast': case 'practice': this.handleCast(noun); break;
+                case 'research': case 'search': this.handleResearch(noun); break;
+                case 'talk': this.handleTalk(noun); break;
+                case 'eat': this.handleEat(noun); break;
+                case 'hint': this.showHint(); break;
+                default:
+                    this.renderOutput("I don't understand that command. Try 'help'.", 'error');
+            }
+        }
+    },
+
+    handleMove(direction) {
+        // [LOGIC FIX] Prevent leaving Gryffindor Common Room without critical items.
+        if (this.gameState.currentRoom === 'gryffindorCommonRoom' && direction === 'out' && !this.gameState.flags.leftCommonRoomOnce) {
+            const hasCloak = this.gameState.inventory.some(i => i.id === 'invisibility_cloak');
+            const hasFlute = this.gameState.inventory.some(i => i.id === 'flute');
+            if (!hasCloak || !hasFlute) {
+                this.renderOutput("You feel like you're forgetting something important. Perhaps you should `examine` the gifts on your bed before leaving.", 'info');
+                return;
+            }
+            this.gameState.flags.leftCommonRoomOnce = true; // Only check this once.
+        }
+
+        const currentRoomData = this.worldData[this.gameState.currentRoom];
+        const exitData = currentRoomData.exits[direction];
+
+        if (!exitData) {
+            this.renderOutput("You can't go that way.", 'error');
+            return;
+        }
+
+        if (this.gameState.currentRoom === 'potionsRiddleRoom' && direction === 'forward' && !this.gameState.flags.potions_quiz_passed) {
+            this.renderOutput("You stare at the bottles, but the logic of the riddle escapes you. You remember Snape's harsh lessons and realize you didn't learn enough to solve this. You must have passed his quiz to proceed.", 'error');
+            return;
+        }
+
+        if (exitData.requiresFlag && !this.gameState.flags[exitData.requiresFlag]) {
+            this.renderOutput(exitData.lockedDescription, 'info');
+            return;
+        }
+
+        if (exitData.event) {
+            if (this.handleEvent(exitData.event)) return;
+        }
+
+        if (exitData.locked) {
+            if (exitData.puzzle) {
+                 if (exitData.puzzle === 'fatLadyPassword') {
+                    const password = prompt("The Fat Lady looks at you expectantly. 'Password?'");
+                    if (password && this.gameState.flags.password && password.toLowerCase() === this.gameState.flags.password.toLowerCase()) {
+                         this.checkAnswer({textContent: 'Caput Draconis'}, true);
+                    } else { this.renderOutput(this.puzzles.fatLadyPassword.failureMessage, 'error'); }
+                 } else if (exitData.puzzle === 'filchEncounter') {
+                    this.renderOutput(this.puzzles.filchEncounter.failureMessage, 'error');
+                 }
+                 else {
+                    this.handlePuzzle(this.puzzles[exitData.puzzle]);
+                }
+            } else {
+                this.renderOutput(exitData.description || "It's locked.", 'info');
+            }
+            return;
+        }
+
+        this.gameState.previousRoom = this.gameState.currentRoom;
+        this.gameState.currentRoom = exitData.to;
+        this.renderRoom();
+    },
+
+    handleEvent(eventName) {
+        const flags = this.gameState.flags;
+        if (eventName === 'firstLetter' && !flags.first_letter_arrived) {
+            flags.first_letter_arrived = true;
+            this.worldData.privetDriveHallway.items.push({ id: 'letter', name: 'a strange letter on the mat', description: "It's a thick, yellowish envelope... addressed to 'Mr. H. Potter, The Cupboard under the Stairs'." });
+            this.renderOutput("As you reach for the front door, you hear the mail slot click and a letter falls onto the mat.", "event");
+            this.renderRoom(true);
+            return true;
+        }
+        if (eventName === 'letterFlood' && flags.letter_taken_once && !flags.letters_flood) {
+            flags.letters_flood = true;
+            this.worldData.livingRoom.description = "You are in the living room. It's an absolute mess of letters! They are pouring out of the boarded-up fireplace, covering every surface. Uncle Vernon looks furious.";
+            this.renderOutput("You go back to the living room. Suddenly, a storm of letters comes shooting out of the fireplace! There must be hundreds!", "event");
+             setTimeout(() => {
+                 this.renderOutput("'That's it!' Uncle Vernon screams. 'We're leaving! Far away!' The world becomes a blur of car rides and strange hotels, until you finally arrive at a miserable hut on a rock in the middle of the sea.", "event");
+                 this.gameState.currentRoom = 'hutOnTheRock';
+                 this.renderRoom();
+             }, 3000);
+            return true;
+        }
+        if (eventName === 'goToPlatform' && flags.shopping_complete) {
+            this.renderOutput("You meet Hagrid back in the pub. 'Got everything?' he asks, before leading you through London to King's Cross Station.", "event");
+            this.gameState.currentRoom = 'platform934';
+            setTimeout(() => this.renderRoom(), 1500);
+            return true;
+        }
+        return false;
+    },
+
+    handleTake(noun) {
+        const room = this.worldData[this.gameState.currentRoom];
+
+        if (noun.includes('broom') && this.gameState.currentRoom === 'flyingKeysRoom' && !this.gameState.flags.knows_flying) {
+            this.renderOutput("You reach for the broom, but you have no idea how to fly it properly. You should complete your first flying lesson before attempting this.", 'error');
+            return;
+        }
+
+        const itemIndex = room.items.findIndex(item => item.name.toLowerCase().includes(noun));
+        if (itemIndex > -1) {
+            const [item] = room.items.splice(itemIndex, 1);
+
+            if (item.id === 'letter' && !this.gameState.flags.letter_taken_once) {
+                this.gameState.flags.letter_taken_once = true;
+                this.renderOutput(`You took the letter. But before you can open it, Uncle Vernon snatches it from you. 'Who'd be writing to you?' he snarls.`, 'info');
+                this.worldData.livingRoom.exits.west.event = 'letterFlood';
+                return;
+            }
+            if (item.id === 'cake') {
+                 this.gameState.inventory.push({ id: 'cake', name: 'a birthday cake', description: "A large, sticky chocolate cake." });
+                 this.renderOutput(`You took the squashed box. Inside is a birthday cake!`, 'success');
+                 this.gameState.flags.hagrid_met = true;
+                 this.renderRoom(true);
+                 return;
+            }
+
+            if (item.id === 'galleons') this.gameState.flags.has_money = true;
+            if (item.id === 'robes') this.gameState.flags.has_robes = true;
+            if (item.id === 'school_books') this.gameState.flags.has_books = true;
+            if (item.id === 'feather') this.gameState.flags.feather_taken = true;
+            if (item.id === 'broomstick') this.gameState.flags.broomstick_taken = true;
+            if (item.id === 'invisibility_cloak' || item.id === 'flute') {
+                if (room.items.length === 0) {
+                     this.gameState.flags.gifts_taken = true;
+                }
+            }
+
+
+            this.gameState.inventory.push(item);
+            this.renderOutput(`You took the ${item.name.replace(/a |an |a set of |a pile of |a piece of /,'')}.`, 'success');
+
+            this.checkStoryProgress();
+            this.renderRoom(true); // Re-render room to show item is gone
+            this.renderInventory(); // Update inventory display
+
+        } else { this.renderOutput("You don't see that here.", 'error'); }
+    },
+
+    checkStoryProgress() {
+        const flags = this.gameState.flags;
+        if (flags.has_money && flags.has_wand && flags.has_robes && flags.has_books && !flags.shopping_complete) {
+            flags.shopping_complete = true;
+            this.renderOutput("You now have all your school supplies! Hagrid is waiting for you back at the Leaky Cauldron. You should `go pub` to meet him and go to the train station.", "event");
+        }
+    },
+
+    handleExamine(noun) {
+        if (!noun || noun === 'room') { this.renderRoom(true); return; }
+
+        if (noun.includes('mirror') && this.gameState.currentRoom === 'finalChamber') {
+            if (this.gameState.flags.stone_acquired) {
+                this.renderOutput("You see your reflection, looking triumphant with the stone safe in your pocket.", "info");
+                return;
+            }
+            this.renderOutput("You look into the Mirror of Erised. At first, you see yourself standing with your parents. But as you focus on your mission to protect the Stone, the scene changes. Your reflection smiles, pulls a blood-red stone from its pocket, and puts it into its own pocket.", "event");
+            setTimeout(() => {
+                this.renderOutput("You feel a sudden weight in your real pocket. You've got the Philosopher's Stone!", "success");
+                this.gameState.flags.stone_acquired = true;
+                this.gameState.inventory.push({ id: 'philosophers_stone', name: 'the Philosopher\'s Stone', description: 'It glows with a warm, inner light.' });
+                this.renderInventory();
+                
+                setTimeout(() => {
+                    this.renderOutput("'He lies!' a high, cold voice says from the back of Quirrell's head. Quirrell lunges at you, but when he touches your skin, his hands blister and turn to ash. He crumbles away, leaving only a cloud of dark smoke that passes through you, knocking you unconscious.", "event");
+                    
+                    setTimeout(() => {
+                        this.renderOutput("...", "info");
+                        this.gameState.currentRoom = 'hospitalWing';
+                        this.renderRoom();
+                    }, 4000);
+                }, 2000);
+            }, 2000);
+            return;
+        }
+
+        const room = this.worldData[this.gameState.currentRoom];
+        const itemInRoom = room.items.find(item => item.name.toLowerCase().includes(noun));
+        const itemInInventory = this.gameState.inventory.find(item => item.name.toLowerCase().includes(noun) || item.id.toLowerCase().includes(noun));
+
+        if (itemInInventory && itemInInventory.id === 'dumbledore_card') {
+            this.renderOutput("You look at the card. It's a Famous Wizard Card for Albus Dumbledore. On the back, it reads: 'CONSIDERED BY MANY THE GREATEST WIZARD OF MODERN TIMES, DUMBLEDORE IS PARTICULARLY FAMOUS FOR HIS DEFEAT OF THE DARK WIZARD GRINDELWALD IN 1945, FOR THE DISCOVERY OF THE TWELVE USES OF DRAGON'S BLOOD, AND HIS WORK ON ALCHEMY WITH HIS PARTNER, NICOLAS FLAMEL.' ... Flamel! That's the name you heard about!", 'success');
+            this.gameState.flags.knows_flamel = true;
+        }
+        else if (noun.includes('hat') && this.gameState.currentRoom === 'greatHall' && !this.gameState.flags.sorted) { this.checkAnswer({textContent: ''}, true); }
+        else if (noun.includes('ceiling') && this.gameState.currentRoom === 'greatHall') { this.renderOutput('The ceiling is bewitched to look like the sky outside. Tonight, it is clear and filled with stars.', 'info'); }
+        else if (noun.includes('tables') && this.gameState.currentRoom === 'greatHall') { this.renderOutput('There are four long tables for the students, and one high table at the front for the teachers.', 'info'); }
+        else if (itemInRoom) { this.renderOutput(itemInRoom.description, 'info'); }
+        else if (itemInInventory) { this.renderOutput(itemInInventory.description, 'info'); }
+        else { this.renderOutput("You don't see that here.", 'error'); }
+    },
+
+    handleOpen(noun) {
+        const room = this.worldData[this.gameState.currentRoom];
+        const exitKey = Object.keys(room.exits).find(k => noun.includes(k));
+
+        if (exitKey === 'door' && this.gameState.currentRoom === 'thirdFloorCorridor' && !this.gameState.flags.knows_alohomora) {
+            this.renderOutput("The door is locked tight. Hermione peers at the lock. 'I've read about this... it's a simple unlocking charm. You just say `Alohomora`! Now you know the spell, you should try to `cast alohomora`.'", 'event');
+            this.gameState.flags.knows_alohomora = true;
+            return;
+        }
+
+        if (exitKey) {
+            if (exitKey === 'door' && this.gameState.currentRoom === 'thirdFloorCorridor' && !this.gameState.flags.fluffy_asleep) {
+                this.renderOutput("You unlocked the door, but a furious set of barks from inside reminds you that a simple lock isn't the only thing guarding it. You quickly lock it again.", "info");
+                return;
+            }
+            this.handleMove(exitKey);
+        }
+        else { this.renderOutput("You can't open that.", 'error'); }
+    },
+
+    handleUse(command) {
+        const parts = command.split(' on ');
+        const itemName = parts[0];
+        const targetName = parts.length > 1 ? parts[1] : '';
+        const item = this.gameState.inventory.find(i => i.name.toLowerCase().includes(itemName));
+        if (!item) { this.renderOutput(`You don't have a ${itemName}.`, 'error'); return; }
+
+        if (item.id === 'invisibility_cloak' && this.gameState.currentRoom === 'hogwartsCorridor') {
+            this.activePuzzle = this.puzzles.filchEncounter;
+            this.checkAnswer({}, true);
+        } else if (item.id === 'toy_soldiers' && this.gameState.currentRoom === 'chessChamber') {
+            this.renderOutput("You have a sudden, brilliant idea. You pull out the broken toy soldiers and place them on an empty square. A strange magic flows from the board, and the soldiers grow to the size of real chess pawns! 'Wicked!' Ron exclaims. 'Now I can use them for the sacrifice!'", 'success');
+            this.gameState.flags.ron_saved_by_soldiers = true;
+            this.gameState.inventory = this.gameState.inventory.filter(i => i.id !== 'toy_soldiers');
+            this.renderInventory();
+        } else if (item.id === 'wand' && targetName.includes('troll') && this.gameState.currentRoom === 'girlsBathroom') {
+            if (this.gameState.flags.knows_leviosa) { this.handlePuzzle(this.puzzles.trollEncounter); }
+            else { this.renderOutput("You wave your wand, but you don't know any useful spells yet!", 'error'); }
+        } else if (item.id === 'flute' && this.gameState.currentRoom === 'thirdFloorCorridor') {
+            this.renderOutput("You play the flute. The soft, haunting melody causes the great beast's heads to droop one by one, until it slumps into a deep, snoring sleep.", 'success');
+            this.gameState.flags.fluffy_asleep = true;
+            this.renderRoom(true);
+        } else if (item.id === 'gringotts_key' && this.gameState.currentRoom === 'gringotts') {
+             this.handlePuzzle(this.puzzles.gringottsKey);
+        } else if (item.id === 'feather' && this.gameState.currentRoom === 'flyingKeysRoom') {
+            if (this.gameState.inventory.find(i => i.id === 'broomstick')) {
+                this.activePuzzle = this.puzzles.flyingKey;
+                this.checkAnswer({}, true);
+            } else {
+                this.renderOutput("The feather is too light. You'd need to get closer to the keys to use it effectively.", "info");
+            }
+        } else { this.renderOutput("That doesn't seem to do anything here.", 'info'); }
+    },
+
+    handleCast(spellName) {
+        if (this.gameState.currentRoom === 'charmsClassroom' && (spellName.includes('spell') || spellName.includes('leviosa'))) {
+            this.handlePuzzle(this.puzzles.charmsLesson);
+            return;
+        }
+        if (!this.gameState.inventory.find(i => i.id === 'wand')) { this.renderOutput("You don't have a wand!", 'error'); return; }
+
+        if (spellName.includes('leviosa') && this.gameState.currentRoom === 'girlsBathroom' && !this.gameState.flags.troll_defeated) {
+             this.handlePuzzle(this.puzzles.trollEncounter);
+        } else if (spellName.includes('lumos') && this.gameState.currentRoom === 'trapdoorRoom') {
+             this.handlePuzzle(this.puzzles.devilsSnare);
+        } else if (spellName.includes('alohomora') && this.gameState.currentRoom === 'thirdFloorCorridor') {
+            if (!this.gameState.flags.knows_alohomora) {
+                this.renderOutput("You don't know that spell!", "error");
+            } else if (!this.gameState.flags.fluffy_asleep) {
+                this.renderOutput("With a click, the spell unlocks the door! But a furious bark from inside reminds you that a simple lock isn't the only thing guarding it. You quickly lock it again.", "info");
+            } else {
+                this.activePuzzle = this.puzzles.fluffyDoor;
+                this.checkAnswer({}, true);
+            }
+        } else { this.renderOutput("You wave your wand and say the words, but nothing happens.", 'info'); }
+    },
+
+    handleResearch(topic) {
+        if (this.gameState.currentRoom !== 'library') { this.renderOutput("You can only do research in the library.", 'error'); return; }
+        if (topic.includes('flamel')) {
+            this.renderOutput("You spend hours searching. Just as you're about to give up, you find a note in 'Potent Potions': 'Nicolas Flamel is the only known maker of the Philosopher's Stone!' The book also mentions the stone is guarded at Hogwarts by a three-headed dog named Fluffy, who Hagrid bought from a 'Greek chappie'.", 'success');
+            this.gameState.flags.knows_flamel = true;
+            this.renderRoom(true);
+        } else { this.renderOutput("You search for information on that topic, but find nothing of interest.", 'info'); }
+    },
+
+    handleTalk(noun) {
+        const target = noun.replace(/^to\s+/, '').trim();
+
+        if (target.includes('snape') && this.gameState.currentRoom === 'potionsClassroom' && !this.gameState.flags.potions_quiz_passed) {
+            this.renderOutput("Snape glares at you. 'You wish to speak to me, Potter? Very well. Let us see if your fame has translated into knowledge.'", 'event');
+            this.handlePuzzle(this.puzzles.potionsQuestion1);
+        }
+        else if (target.includes('hooch') && this.gameState.currentRoom === 'flyingLessonGrounds' && !this.gameState.flags.knows_flying) {
+            this.handlePuzzle(this.puzzles.flyingLesson);
+        }
+        else if (target.includes('hagrid') && this.gameState.currentRoom === 'hutOnTheRock') {
+            this.gameState.flags.hagrid_met = true;
+            this.handlePuzzle(this.puzzles.hagridTrust);
+        }
+        else if (target.includes('ron') && this.gameState.currentRoom === 'hogwartsExpress') {
+            this.renderOutput("'Wicked,' says Ron, looking at your scar. 'So, is it true?' You spend the rest of the journey talking.", 'info');
+            setTimeout(() => {
+                this.renderOutput("The journey passes quickly as you and Ron talk and share sweets. The train finally slows down as it pulls into Hogsmeade station. You have arrived at Hogwarts!", "event");
+                this.gameState.currentRoom = 'greatHall';
+                this.renderRoom();
+            }, 2000);
+        }
+        else if ((target.includes('mcgonagall') || target.includes('professor') || target.includes('hat')) && this.gameState.currentRoom === 'greatHall' && !this.gameState.flags.sorted) {
+             this.checkAnswer({textContent: ''}, true);
+        }
+        else if (target.includes('ollivander') && this.gameState.currentRoom === 'ollivanders' && !this.gameState.flags.has_wand) {
+            this.handlePuzzle(this.puzzles.wandChoice);
+        }
+        else if (target.includes('dumbledore') && this.gameState.currentRoom === 'hospitalWing') {
+            this.renderOutput("'Ah, Harry. I was expecting you to wake.' Dumbledore's eyes twinkle. 'The stone is destroyed. As for Voldemort, he is still out there, but powerless for now. It was your mother's love, Harry, that protected you.' He smiles gently. 'Now, rest.'", 'info');
+            this.renderOutput("THE END", 'success');
+            document.getElementById('ta-input').disabled = true;
+        }
+        else { this.renderOutput("There is no one here by that name to talk to.", 'error'); }
+    },
+
+    handleEat(noun) {
+        const itemIndex = this.gameState.inventory.findIndex(i => i.name.toLowerCase().includes(noun));
+        if (itemIndex > -1) {
+            const item = this.gameState.inventory[itemIndex];
+            if (item.id === 'cake') {
+                this.gameState.inventory.splice(itemIndex, 1);
+                this.renderOutput("You eat the squashed birthday cake. It's the best you've ever had.", 'success');
+            } else if (item.id === 'chocolate_frog') {
+                this.gameState.inventory.splice(itemIndex, 1);
+                const card = { id: 'dumbledore_card', name: 'a Dumbledore card', description: "It's a Famous Wizard Card for Albus Dumbledore. There is some text on the back." };
+                this.gameState.inventory.push(card);
+                this.renderOutput("You eat the delicious chocolate frog. It hops once and is gone! You are left with a Famous Wizard Card.", 'success');
+            }
+            else { this.renderOutput("You can't eat that.", 'error'); }
+            this.renderInventory();
+        } else { this.renderOutput("You don't have that to eat.", 'error'); }
+    },
+
+    handlePuzzle(puzzleData) {
+        if (!puzzleData) {
+            console.error("Attempted to handle a non-existent puzzle.");
+            this.renderOutput("An error occurred with this puzzle. Please try another action.", "error");
+            return;
+        }
+        this.activePuzzle = puzzleData;
+        const puzzle = puzzleData[this.gameState.difficulty];
+        if (!puzzle.question) {
+            this.checkAnswer({}, true);
+            return;
+        }
+        let puzzleHTML = `<div class="puzzle-container my-4 p-4 border border-dashed border-yellow-600/50 rounded-lg">
+            <p class="mb-2">${this.makeWordsClickable(puzzle.question)}</p>
+            <div class="grid grid-cols-2 gap-2 mt-4">`;
+        puzzle.options.forEach(option => {
+            puzzleHTML += `<button class="btn btn-gold" onclick="TextAdventure.checkAnswer(this)">${option}</button>`;
+        });
+        puzzleHTML += `</div></div>`;
+        this.renderOutput(puzzleHTML, 'raw');
+    },
+
+    checkAnswer(button, manualSuccess = false) {
+        let puzzleData = this.activePuzzle;
+        if (!puzzleData) {
+             if (manualSuccess && this.gameState.currentRoom === 'greatHall' && !this.gameState.flags.sorted) {
+                 puzzleData = this.puzzles.greatHallSorting;
+             } else if (manualSuccess) {
+                 puzzleData = this.puzzles.fatLadyPassword;
+             } else {
+                 return;
+             }
+        }
+
+        const selectedAnswer = button.textContent ? button.textContent.trim() : '';
+        const puzzle = puzzleData[this.gameState.difficulty];
+
+        if (document.querySelector('.puzzle-container')) {
+             document.querySelectorAll('.puzzle-container button').forEach(b => b.disabled = true);
+        }
+
+        if (manualSuccess || selectedAnswer === puzzle.correctAnswer) {
+            this.app.playSound(this.app.SOUNDS.correct_answer);
+            this.renderOutput(`Correct!`, 'success');
+
+            const ruleContainer = document.getElementById('rule-explanation-container');
+            if (puzzle.explanation) {
+                const encodedExplanation = btoa(encodeURIComponent(puzzle.explanation));
+                ruleContainer.innerHTML = `<button class="btn btn-gold text-sm" style="background-color: #4a5568;" onclick="TextAdventure.showRuleExplanation('${encodedExplanation}')">Show Rule</button>`;
+            }
+
+            const reward = puzzleData.reward;
+            const successMsg = typeof reward.successMessage === 'function'
+                ? reward.successMessage(this.gameState.flags)
+                : reward.successMessage;
+
+            this.renderOutput(successMsg, 'event');
+
+            setTimeout(() => {
+                if (reward.type === 'move_to') {
+                    this.gameState.previousRoom = this.gameState.currentRoom;
+                    this.gameState.currentRoom = reward.room;
+                    this.renderRoom();
+                } else if (reward.type === 'flag_set') {
+                    this.gameState.flags[reward.flag] = true;
+                    if (reward.flag === 'has_wand') {
+                        this.gameState.inventory.push({ id: 'wand', name: 'your new wand', description: "Eleven inches, holly, with a phoenix feather core. It feels warm in your hand." });
+                        this.renderInventory();
+                    }
+                    if (reward.flag === 'sorted') {
+                        this.gameState.flags.password = 'Caput Draconis';
+                    }
+                    this.renderRoom(true);
+                } else if (reward.type === 'trigger_puzzle') {
+                    this.handlePuzzle(this.puzzles[reward.puzzle]);
+                }
+            }, 1500);
+
+        } else {
+            this.app.playSound(this.app.SOUNDS.incorrect_answer);
+            this.renderOutput(puzzleData.failureMessage, 'error');
+        }
+        this.activePuzzle = null;
+    },
+
+    showRuleExplanation(encodedExplanation) {
+        if (this.app && this.app.openModal) {
+            const explanation = decodeURIComponent(atob(encodedExplanation));
+            const contentHTML = `<div class="text-lg leading-relaxed">${this.makeWordsClickable(explanation)}</div>`;
+            this.app.openModal('Grammar Rule', contentHTML, null);
+        }
+        document.getElementById('rule-explanation-container').innerHTML = '';
+    },
+
+    renderRoom(force_rerender = false) {
+        const room = this.worldData[this.gameState.currentRoom];
+        if (!room) {
+            console.error("FATAL: Tried to render a room that doesn't exist:", this.gameState.currentRoom);
+            this.renderOutput("A strange magic has blocked your path. You feel disoriented and find yourself back where you started.", "error");
+            this.gameState.currentRoom = this.gameState.previousRoom || 'cupboardUnderStairs';
+            this.renderRoom(true);
+            return;
+        }
+
+        let descriptionToRender = room.description;
+        if (room.description_after_flags) {
+            for (const flag_cond of room.description_after_flags) {
+                if (this.gameState.flags[flag_cond.flag]) {
+                    descriptionToRender = flag_cond.text;
+                    break;
+                }
+            }
+        } else if (room.description_after_flag && this.gameState.flags[room.description_after_flag.flag]) {
+            descriptionToRender = room.description_after_flag.text;
+        }
+
+
+        let html = `<div>${this.makeWordsClickable(descriptionToRender)}</div>`;
+        if (room.items && room.items.length > 0) {
+            html += `<div class="mt-2">You see: ${this.makeWordsClickable(room.items.map(i => i.name).join(', '))}.</div>`;
+        }
+        this.renderOutput(html, 'raw');
+    },
+
+    renderInventory(isCommand = false) {
+        // [UI ENHANCEMENT] Beautiful emoji inventory display.
+        const inventoryDiv = document.getElementById('inventory-display');
+        if (!inventoryDiv) return;
+
+        if (this.gameState.inventory.length === 0) {
+            inventoryDiv.innerHTML = `<p class="text-center text-gray-500 italic p-4">Inventory is empty.</p>`;
+            if (isCommand) this.renderOutput("Your inventory is empty.", 'info');
+        } else {
+            const itemsHTML = this.gameState.inventory.map(item => {
+                const emoji = this.itemEmojis[item.id] || '❓';
+                return `
+                    <div class="flex items-center justify-center bg-[#2A3B4D] p-2 rounded-lg text-2xl cursor-pointer hover:bg-[#3D5568] transition-colors" 
+                         onclick="TextAdventure.handleExamine('${item.id.toLowerCase()}')"
+                         title="${item.name}">
+                        ${emoji}
+                    </div>
+                `;
+            }).join('');
+            inventoryDiv.innerHTML = `<div class="grid grid-cols-8 gap-2 p-2">${itemsHTML}</div>`;
+            if (isCommand) {
+                const itemsText = this.gameState.inventory.map(item => item.name.replace(/a |an |a set of |a pile of |a piece of /,'')).join(', ');
+                this.renderOutput(`You are carrying: ${itemsText}.`, 'info');
+            }
+        }
+    },
+
+    renderHelp() {
+        this.renderOutput(`
+            <div><p class="font-bold" style="font-family: 'MedievalSharp', cursive; font-size: 1.2rem;">Common Commands:</p>
+            <ul><li><b>go [direction]</b> (or n, s, e, w, up, down, outside, inside)</li><li><b>look</b> or <b>look room</b></li>
+            <li><b>examine [object]</b> or <b>x [object]</b></li><li><b>take [object]</b> or <b>get [object]</b></li>
+            <li><b>inventory</b> or <b>i</b></li><li><b>open [door/etc]</b></li><li><b>use [item] on [target]</b></li>
+            <li><b>cast [spell]</b></li><li><b>research [topic]</b> (in library)</li><li><b>talk to [person]</b></li><li><b>hint</b> (if you are stuck)</li></ul>
+            </div>`, 'raw');
+    },
+
+    renderOutput(text, type) {
+        const outputDiv = document.getElementById('ta-output');
+        const entry = document.createElement('div');
+
+        switch (type) {
+            case 'command': entry.className = 'ta-command'; entry.textContent = text; break;
+            case 'error': entry.className = 'ta-error'; entry.innerHTML = this.makeWordsClickable(text); break;
+            case 'success': entry.className = 'ta-success'; entry.innerHTML = this.makeWordsClickable(text); break;
+            case 'info': entry.className = 'ta-info'; entry.innerHTML = this.makeWordsClickable(text); break;
+            case 'event': entry.className = 'ta-event'; entry.innerHTML = this.makeWordsClickable(text); break;
+            case 'raw': entry.innerHTML = text; break;
+            default: entry.innerHTML = this.makeWordsClickable(text);
+        }
+
+        outputDiv.appendChild(entry);
+        outputDiv.scrollTo({ top: outputDiv.scrollHeight, behavior: 'smooth' });
+    },
+
+    makeWordsClickable(text) {
+        if(!text) return '';
+        // Improved regex to better handle punctuation and avoid adding click handlers to HTML tags
+        return text.replace(/(\b[a-zA-Z-']+\b)/g, (word) => {
+            const cleanWord = word.toLowerCase();
+            const escapedWord = cleanWord.replace(/'/g, "\\'");
+            return `<span class="learn-word" onclick="Dictionary.showDefinitionPopup('${escapedWord}')">${word}</span>`;
+        });
+    }
+};
+
+    window.TextAdventure = TextAdventure;
+    </script>
 </body>
 </html>

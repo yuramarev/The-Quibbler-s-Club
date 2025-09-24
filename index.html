@@ -4770,10 +4770,21 @@ const TextAdventure = {
             }
             return "You've been sorted! To explore the castle, you first need to leave the Great Hall and go to your `common room`.";
         },
-        'gryffindorCommonRoom': "You are in your common room. Remember the anonymous gifts you received? You should `take` them before exploring. You'll need them.",
+        'gryffindorCommonRoom': (flags) => {
+            if (flags.is_christmas && !flags.cloak_taken) {
+                return "It's Christmas! There's a new present on your bed. You should `take` it before exploring further.";
+            }
+            return "You are in your common room. You can `go out` to explore the castle corridors.";
+        },
         'hogwartsCorridor': (flags) => {
-            if (!flags.troll_defeated) {
+            if (!flags.knows_leviosa || !flags.potions_quiz_passed || !flags.knows_flying) {
+                return "You need to learn the basics before you can properly explore. You should attend your classes: `charms`, `potions` in the dungeons, and flying `outside`.";
+            }
+            if (flags.cloak_taken && !flags.troll_defeated) {
                 return "The main thing to do right now is investigate the commotion in the girls' `bathroom`. It sounds urgent.";
+            }
+            if (flags.troll_defeated) {
+                 return "The troll is defeated. Now you can finally explore upstairs. You should try to `go up` the grand staircase.";
             }
             return "You are in a main corridor. You can go to the `charms` classroom, down to the `dungeons`, `outside` for lessons on the grounds, or `up` the grand staircase.";
         },
@@ -4804,9 +4815,12 @@ const TextAdventure = {
             if (!flags.knows_flying) {
                 return "You are in a room full of flying keys, but you can't reach them. You see a broomstick floating nearby, but you haven't had your first lesson yet and don't know how to use it. You must have a `flying lesson` first.";
             }
-            return "You are in a high-ceilinged chamber filled with hundreds of flying keys. On the far side is a heavy wooden door. A single broomstick is floating nearby. Thanks to your flying lesson, you know what to do. You should `take broomstick`.";
+            if (!flags.broomstick_taken) {
+                 return "You are in a high-ceilinged chamber filled with hundreds of flying keys. On the far side is a heavy wooden door. A single broomstick is floating nearby. Thanks to your flying lesson, you know what to do. You should `take broomstick`.";
+            }
+            return "You have your broom, but picking out the right key from the swarm is impossible. The one you need has a battered wing. That practice `feather` from Charms class is very light; perhaps you could `use feather` to tag the correct key?";
         },
-        'chessChamber': "This is a giant, living chess set. The only way is across. You'll have to play. Ron is an expert and will guide you. You must trust him and `go across`.",
+        'chessChamber': "This is a giant, living chess set. The only way is across. You'll have to play. Ron is an expert, but he looks worried. 'This means some of us will be... taken. If only we had something disposable to use for a sacrifice...' To proceed, you must trust Ron and `go across`.",
         'potionsRiddleRoom': (flags) => {
             if (!flags.potions_quiz_passed) {
                 return "You enter a dark room with a table of potions and a riddle. The logic puzzle is incredibly complex. You stare at the bottles, but the logic of the riddle escapes you. You didn't pay enough attention in Snape's class and cannot solve it. You must go back and learn more.";
@@ -4954,27 +4968,51 @@ const TextAdventure = {
             items: []
         },
         'gryffindorCommonRoom': {
-            description: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. A portrait of a Fat Lady guards the entrance. Two anonymously-given Christmas presents are on your bed.",
-            description_after_flag: {
-                flag: 'gifts_taken',
-                text: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. A portrait of a Fat Lady guards the entrance."
-            },
+            description: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. A portrait of a Fat Lady guards the entrance. An anonymously-given present is on your bed.",
+            description_after_flags: [
+                 {
+                    flag: 'gifts_taken',
+                    text: "You are in the cozy, circular Gryffindor common room. Comfy armchairs are gathered around a crackling fireplace. The room feels warm and safe."
+                },
+                 {
+                    flag: 'is_christmas',
+                    text: "You are in the cozy, circular Gryffindor common room. It's decorated for Christmas, and a roaring fire is in the hearth. You notice a new, mysterious present has been left on your bed."
+                }
+            ],
             exits: { 'out': { to: 'hogwartsCorridor' } },
             items: [
-                { id: 'invisibility_cloak', name: 'a strange silvery cloak', description: "A note attached to it says 'Use it well.' It's an invisibility cloak!" },
                 { id: 'flute', name: 'a wooden flute', description: "A simple wooden flute, a gift from Hagrid. It plays a haunting melody." }
             ]
         },
         'hogwartsCorridor': {
             description: "You are in a stone corridor on the first floor. Suits of armor line the walls, and portraits watch you pass. Doors lead to the Charms classroom, down to the dungeons, and outside to the grounds. A grand staircase goes up.",
+            description_after_flags: [
+                {
+                    flag: 'troll_defeated',
+                    text: "You are in a stone corridor on the first floor. The memory of the troll fight lingers. Doors lead to the Charms classroom, down to the dungeons, and outside to the grounds. A grand staircase goes up."
+                },
+                {
+                    flag: 'cloak_taken',
+                    text: "You are in a stone corridor on the first floor. Suddenly, you hear a scream from the girls' bathroom down the hall. It sounds like Hermione is in trouble! Other doors lead to the Charms classroom, down to the dungeons, and outside to the grounds. A grand staircase goes up."
+                }
+            ],
             exits: {
                 'common room': { to: 'gryffindorCommonRoom' },
                 'charms': { to: 'charmsClassroom' },
                 'dungeons': { to: 'dungeonCorridor' },
                 'outside': { to: 'flyingLessonGrounds' },
-                // [LOGIC CHANGE] Going upstairs is now blocked until the troll is defeated.
-                'up': { locked: true, puzzle: 'filchEncounter', requiresFlag: 'troll_defeated', lockedDescription: "You hear a scream from the girls' bathroom down the hall. It sounds like Hermione is in trouble. You should check it out (`go bathroom`) before exploring upstairs." },
-                'bathroom': { to: 'girlsBathroom' }
+                'up': {
+                    to: 'thirdFloorCorridor',
+                    locked: true,
+                    puzzle: 'filchEncounter',
+                    requiresFlag: 'troll_defeated',
+                    lockedDescription: "That corridor is out of bounds for first-years. You remember Dumbledore's warning at the start-of-term feast."
+                },
+                'bathroom': {
+                    to: 'girlsBathroom',
+                    requiresFlag: 'cloak_taken',
+                    lockedDescription: "There's nothing of interest down that way."
+                }
             },
             items: []
         },
@@ -5059,7 +5097,7 @@ const TextAdventure = {
             description: "You are in a high-ceilinged chamber filled with hundreds of fluttering, jewel-bright birds. You realize they're not birds - they're keys! On the far side is a heavy wooden door. A single broomstick is floating nearby.",
             description_after_flag: {
                 flag: 'broomstick_taken',
-                text: "You are in a high-ceilinged chamber filled with hundreds of fluttering, jewel-bright keys. On the far side is a heavy wooden door."
+                text: "You are in a high-ceilinged chamber filled with hundreds of fluttering, jewel-bright keys. You have your broom, but picking out the right key from the swarm is impossible. The one you need has a battered wing, but it's lost in the dizzying dance. That practice `feather` from Charms class is very light; perhaps you could `use feather` to tag the correct key?"
             },
             exits: {
                 'back': { to: 'trapdoorRoom' },
@@ -5068,7 +5106,7 @@ const TextAdventure = {
             items: [ {id: 'broomstick', name: 'a broomstick', description: 'An old Silver Arrow. It looks reliable.'} ]
         },
         'chessChamber': {
-             description: "You enter a huge, dark chamber on the edge of a giant chessboard. Across the room stand enormous black chess pieces. They turn their helmeted heads to look at you.",
+             description: "You enter a huge, dark chamber on the edge of a giant chessboard. Across the room stand enormous black chess pieces. They turn their helmeted heads to look at you. Ron looks pale. 'We have to play... become the pieces.' He gulps. 'This means some of us will get... taken. If only we had something disposable to use for a sacrifice...'",
              exits: {
                  'back': { to: 'flyingKeysRoom' },
                  'across': { locked: true, puzzle: 'chessPuzzle' }
@@ -5129,10 +5167,10 @@ const TextAdventure = {
             failureMessage: "You say the word, but the broom just twitches and lies still. 'Not enough conviction!' barks Madam Hooch."
         },
         'filchEncounter': {
-            A2: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
-            B1: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
-            B2: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
-            C1: { correctAnswer: '', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            A2: { correctAnswer: 'use cloak', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            B1: { correctAnswer: 'use cloak', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            B2: { correctAnswer: 'use cloak', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
+            C1: { correctAnswer: 'use cloak', explanation: "The invisibility cloak is a key item for moving around Hogwarts undetected. Using it at the right time is crucial." },
             reward: { type: 'move_to', room: 'thirdFloorCorridor', successMessage: "You quickly throw the invisibility cloak over yourself. A moment later, Filch shuffles past, grumbling to his cat, Mrs. Norris. Neither of them notices you. You silently slip up the stairs." },
             failureMessage: "You take a step towards the stairs, but a wheezing voice calls out 'Who's there?!'. You've been spotted! You quickly retreat before you get detention."
         },
@@ -5392,7 +5430,6 @@ const TextAdventure = {
                 correctAnswer: "The levitated club hovered precariously, then plummeted, striking the troll with a sickening crunch.",
                 explanation: "Strong, active verbs create more engaging and descriptive writing. 'Hovered', 'plummeted', 'striking' are much more powerful and create a clearer mental image than the passive ('was hit') or simple verbs ('fell', 'got')."
             },
-            // [LOGIC CHANGE] Set the troll_defeated flag upon success.
             reward: { type: 'flag_set', flag: 'troll_defeated', successMessage: "You shout 'Wingardium Leviosa!' and flick your wand. The troll's own club rises into the air, wobbles, and then drops right on its head. The troll sways and collapses with a floor-shaking thud. You've saved Hermione!" },
             failureMessage: "You try to cast the spell, but nothing happens! The troll raises its club higher."
         },
@@ -5648,17 +5685,6 @@ const TextAdventure = {
     },
 
     handleMove(direction) {
-        // [LOGIC FIX] Prevent leaving Gryffindor Common Room without critical items.
-        if (this.gameState.currentRoom === 'gryffindorCommonRoom' && direction === 'out' && !this.gameState.flags.leftCommonRoomOnce) {
-            const hasCloak = this.gameState.inventory.some(i => i.id === 'invisibility_cloak');
-            const hasFlute = this.gameState.inventory.some(i => i.id === 'flute');
-            if (!hasCloak || !hasFlute) {
-                this.renderOutput("You feel like you're forgetting something important. Perhaps you should `examine` the gifts on your bed before leaving.", 'info');
-                return;
-            }
-            this.gameState.flags.leftCommonRoomOnce = true; // Only check this once.
-        }
-
         const currentRoomData = this.worldData[this.gameState.currentRoom];
         const exitData = currentRoomData.exits[direction];
 
@@ -5666,14 +5692,24 @@ const TextAdventure = {
             this.renderOutput("You can't go that way.", 'error');
             return;
         }
-
-        if (this.gameState.currentRoom === 'potionsRiddleRoom' && direction === 'forward' && !this.gameState.flags.potions_quiz_passed) {
-            this.renderOutput("You stare at the bottles, but the logic of the riddle escapes you. You remember Snape's harsh lessons and realize you didn't learn enough to solve this. You must have passed his quiz to proceed.", 'error');
+        
+        // Handle single flag requirement
+        if (exitData.requiresFlag && !this.gameState.flags[exitData.requiresFlag]) {
+            this.renderOutput(exitData.lockedDescription, 'info');
             return;
         }
 
-        if (exitData.requiresFlag && !this.gameState.flags[exitData.requiresFlag]) {
-            this.renderOutput(exitData.lockedDescription, 'info');
+        // Handle multiple flag requirement
+        if (exitData.requiresFlags) {
+            const allFlagsMet = exitData.requiresFlags.every(flag => this.gameState.flags[flag]);
+            if (!allFlagsMet) {
+                this.renderOutput(exitData.lockedDescription, 'info');
+                return;
+            }
+        }
+
+        if (this.gameState.currentRoom === 'potionsRiddleRoom' && direction === 'forward' && !this.gameState.flags.potions_quiz_passed) {
+            this.renderOutput("You stare at the bottles, but the logic of the riddle escapes you. You remember Snape's harsh lessons and realize you didn't learn enough to solve this. You must have passed his quiz to proceed.", 'error');
             return;
         }
 
@@ -5689,7 +5725,7 @@ const TextAdventure = {
                          this.checkAnswer({textContent: 'Caput Draconis'}, true);
                     } else { this.renderOutput(this.puzzles.fatLadyPassword.failureMessage, 'error'); }
                  } else if (exitData.puzzle === 'filchEncounter') {
-                    this.renderOutput(this.puzzles.filchEncounter.failureMessage, 'error');
+                    this.renderOutput("You take a step towards the stairs, but a wheezing voice calls out 'Who's there?!'. You've been spotted! You quickly retreat before you get detention. You'll need a way to be unseen.", 'error');
                  }
                  else {
                     this.handlePuzzle(this.puzzles[exitData.puzzle]);
@@ -5765,8 +5801,11 @@ const TextAdventure = {
             if (item.id === 'school_books') this.gameState.flags.has_books = true;
             if (item.id === 'feather') this.gameState.flags.feather_taken = true;
             if (item.id === 'broomstick') this.gameState.flags.broomstick_taken = true;
+            if (item.id === 'invisibility_cloak') {
+                this.gameState.flags.cloak_taken = true;
+            }
             if (item.id === 'invisibility_cloak' || item.id === 'flute') {
-                if (room.items.length === 0) {
+                if (this.worldData.gryffindorCommonRoom.items.length === 0) {
                      this.gameState.flags.gifts_taken = true;
                 }
             }
@@ -5780,6 +5819,19 @@ const TextAdventure = {
             this.renderInventory(); // Update inventory display
 
         } else { this.renderOutput("You don't see that here.", 'error'); }
+    },
+    
+    checkChristmasStatus() {
+        const flags = this.gameState.flags;
+        if (flags.knows_leviosa && flags.potions_quiz_passed && flags.knows_flying && !flags.is_christmas) {
+            flags.is_christmas = true;
+            this.renderOutput("You've completed your first round of classes! Time passes, and the castle is soon decorated for the holidays. Christmas has arrived! You've heard there's a present waiting for you back in the Gryffindor common room.", "event");
+            this.worldData.gryffindorCommonRoom.items.push({
+                id: 'invisibility_cloak',
+                name: 'a strange silvery cloak',
+                description: "A note attached to it says 'Your father left this in my possession before he died. It is time it was returned to you. Use it well.' It's an invisibility cloak!"
+            });
+        }
     },
 
     checkStoryProgress() {
@@ -5858,7 +5910,7 @@ const TextAdventure = {
         const parts = command.split(' on ');
         const itemName = parts[0];
         const targetName = parts.length > 1 ? parts[1] : '';
-        const item = this.gameState.inventory.find(i => i.name.toLowerCase().includes(itemName));
+        const item = this.gameState.inventory.find(i => i.name.toLowerCase().includes(itemName) || i.id.toLowerCase().includes(itemName));
         if (!item) { this.renderOutput(`You don't have a ${itemName}.`, 'error'); return; }
 
         if (item.id === 'invisibility_cloak' && this.gameState.currentRoom === 'hogwartsCorridor') {
@@ -5879,12 +5931,12 @@ const TextAdventure = {
         } else if (item.id === 'gringotts_key' && this.gameState.currentRoom === 'gringotts') {
              this.handlePuzzle(this.puzzles.gringottsKey);
         } else if (item.id === 'feather' && this.gameState.currentRoom === 'flyingKeysRoom') {
-            if (this.gameState.inventory.find(i => i.id === 'broomstick')) {
-                this.activePuzzle = this.puzzles.flyingKey;
-                this.checkAnswer({}, true);
-            } else {
-                this.renderOutput("The feather is too light. You'd need to get closer to the keys to use it effectively.", "info");
+            if (!this.gameState.inventory.find(i => i.id === 'broomstick')) {
+                 this.renderOutput("You'd need to get much closer to use the feather. Try taking the `broomstick` first.", 'error');
+                 return;
             }
+            this.activePuzzle = this.puzzles.flyingKey;
+            this.checkAnswer({}, true);
         } else { this.renderOutput("That doesn't seem to do anything here.", 'info'); }
     },
 
@@ -6047,6 +6099,9 @@ const TextAdventure = {
                         this.gameState.flags.password = 'Caput Draconis';
                     }
                     this.renderRoom(true);
+                    if (['knows_leviosa', 'potions_quiz_passed', 'knows_flying'].includes(reward.flag)) {
+                        this.checkChristmasStatus();
+                    }
                 } else if (reward.type === 'trigger_puzzle') {
                     this.handlePuzzle(this.puzzles[reward.puzzle]);
                 }

@@ -927,17 +927,17 @@ const App = {
     SPELL_DETAILS: {
         "Expelliarmus": { mp: 5, base_dmg: 10, type: "offensive", accuracy: 8, crit_chance: 19, desc: "Disarming charm. Medium damage." },
         "Stupefy": { mp: 8, base_dmg: 15, type: "offensive", accuracy: 9, crit_chance: 19, desc: "Stunning spell. Good damage." },
-        "Insendio": { mp: 10, base_dmg: 18, type: "offensive", element: "fire", accuracy: 10, crit_chance: 18, desc: "Fire-making spell. Fire damage." },
+        "Insendio": { mp: 10, base_dmg: 18, type: "offensive", element: "🔥 Fire", accuracy: 10, crit_chance: 18, desc: "Fire-making spell. Fire damage." },
         "Diffindo": { mp: 7, base_dmg: 12, type: "offensive", accuracy: 8, crit_chance: 19, desc: "Severing charm. Medium damage." },
         "Reducto": { mp: 12, base_dmg: 22, type: "offensive", accuracy: 11, crit_chance: 18, desc: "Reductor Curse. Significant damage." },
-        "Confringo": { mp: 15, base_dmg: 28, type: "offensive", element: "fire", accuracy: 12, crit_chance: 17, desc: "Blasting Curse. High fire damage." },
-        "Sectumsempra": { mp: 30, base_dmg: 40, type: "offensive_dark", accuracy: 14, crit_chance: 18, desc: "Dark cutting curse. Severe damage." },
-        "Petrificus Totalus": { mp: 10, base_dmg: 5, type: "offensive_bind", effect: "stun", duration: 1, accuracy: 10, effect_chance: 12, desc: "Full Body-Bind. Low damage, may stun." },
-        "Confundo": { mp: 10, type: "offensive_utility", effect: "confuse", duration: 1, accuracy: 11, effect_chance: 10, desc: "Confundus Charm. May cause opponent to miss." },
-        "Silencio": { mp: 7, type: "offensive_utility", effect: "silence", duration: 1, accuracy: 11, effect_chance: 13, desc: "Silencing Charm. Prevents spellcasting." },
+        "Confringo": { mp: 15, base_dmg: 28, type: "offensive", element: "🔥 Fire", accuracy: 12, crit_chance: 17, desc: "Blasting Curse. High fire damage." },
+        "Sectumsempra": { mp: 30, base_dmg: 25, type: "offensive_dark", effect: "🩸 Bleeding", dot_dmg: 10, duration: 2, accuracy: 14, crit_chance: 18, desc: "Dark cutting curse. Damage + bleeding over time." },
+        "Petrificus Totalus": { mp: 10, base_dmg: 5, type: "offensive_bind", effect: "😵 Stun", duration: 2, accuracy: 10, effect_chance: 12, desc: "Full Body-Bind. Low damage, may stun for 2 turns." },
+        "Confundo": { mp: 10, type: "offensive_utility", effect: "🥴 Confuse", duration: 2, accuracy: 11, effect_chance: 10, desc: "Confundus Charm. May cause opponent to miss for 2 turns." },
+        "Silencio": { mp: 7, type: "offensive_utility", effect: "🤫 Silence", duration: 2, accuracy: 11, effect_chance: 13, desc: "Silencing Charm. Prevents spellcasting for 2 turns." },
         "Avada Kedavra": { mp: 50, base_dmg: 80, type: "offensive_dark_unforgivable", accuracy: 18, crit_chance: 20, desc: "The Killing Curse. Massive damage." },
-        "Crucio": { mp: 35, base_dmg: 20, type: "offensive_dark_unforgivable", effect: "pain_dot", dot_dmg: 8, duration: 2, accuracy: 15, effect_chance: 10, desc: "Cruciatus Curse. Damage + pain over time." },
-        "Imperio": { mp: 30, type: "offensive_dark_unforgivable", effect: "control", duration: 1, accuracy: 16, effect_chance: 9, desc: "Imperius Curse. Chance to control opponent." },
+        "Crucio": { mp: 35, base_dmg: 15, type: "offensive_dark_unforgivable", effect: "😫 Pain", dot_dmg: 8, duration: 2, accuracy: 15, effect_chance: 10, desc: "Cruciatus Curse. Damage + pain over time for 2 turns." },
+        "Imperio": { mp: 30, type: "offensive_dark_unforgivable", effect: "🕹️ Control", duration: 2, accuracy: 16, effect_chance: 9, desc: "Imperius Curse. Chance to control opponent for 2 turns." },
         "Protego": { mp: 10, type: "shield", strength: 25, duration: 1, accuracy: 5, desc: "Shield Charm. Blocks/reduces damage." },
         "Finite Incantatem": { mp: 10, type: "counter_utility", accuracy: 6, desc: "General Counter-Spell. Can dispel effects." },
         "Episkey": { mp: 12, base_heal: 30, type: "heal", accuracy: 5, desc: "Healing spell. Restores HP." },
@@ -3593,6 +3593,24 @@ const DuelingClub = {
         this.updateDuelUI(); 
 
         const executeAction = () => {
+            // NEW: Check for debilitating status effects
+            if (caster.statusEffects.stun) {
+                this.log(`${caster.name} is stunned and cannot move!`, 'orange');
+                this.endTurn();
+                return;
+            }
+            if (caster.statusEffects.control) {
+                this.log(`${caster.name} is controlled by the Imperius Curse and attacks themself!`, '#f472b6');
+                this.executeSpell(caster, caster, "Stupefy"); // Casts a generic spell on themself
+                this.endTurn();
+                return;
+            }
+            if (caster.statusEffects.confuse && Math.random() < 0.5) {
+                this.log(`${caster.name} is confused and misses their turn!`, 'orange');
+                this.endTurn();
+                return;
+            }
+
             // In Fast Mode, AI considers using a potion
             if (this.isFastMode && this.considerUsingPotion()) {
                 if (this.checkGameOver()) { this.isProcessing = false; return; }
@@ -3602,6 +3620,12 @@ const DuelingClub = {
 
             const spellName = this.chooseSpell(caster);
             const spell = this.app.SPELL_DETAILS[spellName];
+            
+            if (spellName === "Struggle") {
+                this.log(`${caster.name} is silenced and cannot cast spells! They struggle futilely.`, 'gray');
+                this.endTurn();
+                return;
+            }
             
             this.log(this.getDuelLogEntry('cast', { caster: caster.name, target: target.name, spellName }));
             
@@ -3631,20 +3655,22 @@ const DuelingClub = {
             
             // Normal roll if not lucky
             this.animateD20((rollResult) => {
+                // Modified to check against effect_chance for status spells
                 const success = rollResult >= spell.accuracy;
+                const effectSuccess = spell.effect_chance ? rollResult >= spell.effect_chance : success;
                 const critFail = rollResult === 1;
 
                 if (critFail) {
                     this.log(this.getDuelLogEntry('crit_fail', { caster: caster.name, spellName }), '#f472b6');
                     this.duelPlaySound(this.app.SOUNDS.crit_fail_sound);
                     if (spell.type.includes('offensive')) {
-                        this.executeSpell(caster, caster, spellName); // Target self
+                        this.executeSpell(caster, caster, spellName, true); // Target self, always succeed on backfire
                     } else {
                         this.log(`The ${spellName} spell erupts in harmless sparks.`, 'gray');
                     }
                 } else if (success) {
                     this.log(`d20 Roll: ${rollResult}. Success!`, '#34D399');
-                    this.executeSpell(caster, target, spellName);
+                    this.executeSpell(caster, target, spellName, effectSuccess);
                 } else {
                     this.log(`d20 Roll: ${rollResult}. Failure!`, '#F87171');
                     this.log(this.getDuelLogEntry('miss', { caster: caster.name, target: target.name, spellName }), 'gray');
@@ -3728,6 +3754,16 @@ const DuelingClub = {
     },
 
     tickEffects(duelist) {
+
+        for (const effect in duelist.statusEffects) {
+            const status = duelist.statusEffects[effect];
+            if (status.dot_dmg) {
+                const dotDamage = status.dot_dmg;
+                duelist.hp = Math.max(0, duelist.hp - dotDamage);
+                this.log(`${duelist.name} takes ${dotDamage} damage from ${effect}!`, 'red');
+            }
+        }
+
         for (const effect in duelist.statusEffects) {
             duelist.statusEffects[effect].duration--;
             if (duelist.statusEffects[effect].duration <= 0) {
@@ -3756,16 +3792,32 @@ const DuelingClub = {
         return availableSpells[Math.floor(Math.random() * availableSpells.length)];
     },
 
-    executeSpell(caster, target, spellName) {
+    executeSpell(caster, target, spellName, effectSuccess = true) {
         const spell = this.app.SPELL_DETAILS[spellName];
-        if (!spell || caster.mp < spell.mp) {
-            this.log(`${caster.name} lacks the mana!`, 'gray');
-            return;
+        if (!spell) return;
+
+        // Don't consume MP if spell doesn't exist (e.g., self-attack from control)
+        if (this.app.SPELL_DETAILS[spellName]) {
+            if (caster.mp < spell.mp) {
+                this.log(`${caster.name} lacks the mana!`, 'gray');
+                return;
+            }
+            caster.mp -= spell.mp;
         }
-        
-        caster.mp -= spell.mp;
+
         this.duelPlaySound(this.app.SOUNDS.spell_cast_ui, 0.05);
 
+        // --- NEW: Handle Status Effect Application ---
+        if (spell.effect && effectSuccess) {
+            const statusEffect = {
+                duration: spell.duration,
+                dot_dmg: spell.dot_dmg || 0
+            };
+            target.statusEffects[spell.effect] = statusEffect;
+            this.log(`${target.name} is now affected by ${spell.effect}!`, 'orange');
+        }
+
+        // --- Handle Specific Spell Types ---
         if (spell.type === 'heal') {
             const healAmount = spell.base_heal;
             caster.hp = Math.min(caster.maxHp, caster.hp + healAmount);
@@ -3773,29 +3825,35 @@ const DuelingClub = {
         } else if (spell.type === 'shield') {
             caster.shield = { name: spellName, strength: spell.strength, duration: spell.duration };
             this.log(`${caster.name} creates a defensive shield, ${spellName}!`, 'cyan');
+        } else if (spell.type === 'counter_utility') {
+            target.statusEffects = {};
+            target.shield = null;
+            this.log(`${caster.name}'s Finite Incantatem dispels all magical effects on ${target.name}!`, 'lightblue');
         } else if (spell.type.includes('offensive')) {
-            let damage = spell.base_dmg;
-            let finalDamage = damage;
-            
-            if (target.shield) {
-                const blocked = Math.min(target.shield.strength, damage);
-                finalDamage -= blocked;
-                target.shield.strength -= blocked;
-                this.log(this.getDuelLogEntry('shield_block', {target: target.name, spellName, blocked}), 'cyan');
+            let damage = spell.base_dmg || 0;
+            if (damage > 0) {
+                let finalDamage = damage;
+                
+                if (target.shield) {
+                    const blocked = Math.min(target.shield.strength, damage);
+                    finalDamage -= blocked;
+                    target.shield.strength -= blocked;
+                    this.log(this.getDuelLogEntry('shield_block', {target: target.name, spellName, blocked}), 'cyan');
 
-                if (target.shield.strength <= 0) {
-                    this.log(this.getDuelLogEntry('shield_break', {target: target.name}), 'red');
-                    target.shield = null;
-                    this.duelPlaySound(this.app.SOUNDS.shield_break);
-                } else {
-                    this.duelPlaySound(this.app.SOUNDS.duel_block);
+                    if (target.shield.strength <= 0) {
+                        this.log(this.getDuelLogEntry('shield_break', {target: target.name}), 'red');
+                        target.shield = null;
+                        this.duelPlaySound(this.app.SOUNDS.shield_break);
+                    } else {
+                        this.duelPlaySound(this.app.SOUNDS.duel_block);
+                    }
                 }
-            }
-            
-            if (finalDamage > 0) {
-                target.hp = Math.max(0, target.hp - finalDamage);
-                this.log(this.getDuelLogEntry('hit', {target: target.name, damage: finalDamage}), 'red');
-                this.duelPlaySound(this.app.SOUNDS.duel_hit);
+                
+                if (finalDamage > 0) {
+                    target.hp = Math.max(0, target.hp - finalDamage);
+                    this.log(this.getDuelLogEntry('hit', {target: target.name, damage: finalDamage}), 'red');
+                    this.duelPlaySound(this.app.SOUNDS.duel_hit);
+                }
             }
         }
         this.updateDuelUI();
@@ -3820,10 +3878,11 @@ const DuelingClub = {
             this.log(`${winner.name} of ${winner.house} is victorious!`, '#FFD700');
             this.duelPlaySound(this.app.SOUNDS.celebration);
             
+            // This 'if' block handles saving health/mana and history, but no longer awards points.
             if (this.app.isAdmin) {
                 this.log('Both duelists have been fully healed.', 'lightgreen');
-                this.app.HOUSES[winner.house].points += 10;
-                this.log(`${winner.house} is awarded 10 points!`, '#FFD700');
+                // this.app.HOUSES[winner.house].points += 10; // REMOVED
+                // this.log(`${winner.house} is awarded 10 points!`, '#FFD700'); // REMOVED
 
                 this.app.studentData[winner.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[winner.name].mp = this.app.DEFAULT_MP;
@@ -3831,15 +3890,22 @@ const DuelingClub = {
                 this.app.studentData[loser.name].hp = this.app.DEFAULT_HP;
                 this.app.studentData[loser.name].mp = this.app.DEFAULT_MP;
                 
-                this.app.addHistory(`Dueling Club: ${winner.name} defeated ${loser.name}.`, `Winner awarded 10 points. Health restored.`);
+                // History log is updated to no longer mention points.
+                this.app.addHistory(`Dueling Club: ${winner.name} defeated ${loser.name}.`, `Duel concluded. Health restored.`);
                 this.app.saveProgress();
             }
 
             const controls = document.getElementById('duel-controls');
             if (controls) {
-                controls.innerHTML = `<p class="text-xl font-bold text-green-400">${winner.name} wins!</p>`;
+                // The controls are replaced with a message and a button to start a new duel.
+                controls.innerHTML = `
+                    <p class="text-xl font-bold text-green-400 mb-2">${winner.name} wins!</p>
+                    <button class="btn btn-gold" onclick="DuelingClub.openDuelSetup()">New Duel</button>
+                `;
             }
-            this.turnTimeout = setTimeout(() => this.closeDuelModal(), 4000);
+            
+            // The automatic timeout to close the modal has been removed.
+            // this.turnTimeout = setTimeout(() => this.closeDuelModal(), 4000); // REMOVED
             return true;
         }
         return false;
@@ -3932,13 +3998,17 @@ const DuelingClub = {
         if (caster.hp < caster.maxHp * 0.4 && caster.inventory.includes("Wiggenweld Potion")) {
             return this.executeItem(caster, "Wiggenweld Potion");
         }
-        // Restore MP if below 15
-        if (caster.mp < 15 && caster.inventory.includes("Focus Draught")) {
-            return this.executeItem(caster, "Focus Draught");
-        }
         // Use shield if caster has no shield and target is healthy
         if (!caster.shield && this.currentTarget.hp > this.currentTarget.maxHp * 0.5 && caster.inventory.includes("Shielding Brew")) {
             return this.executeItem(caster, "Shielding Brew");
+        }
+        // NEW: Use Felix Felicis if not in immediate danger and doesn't already have the effect
+        if (caster.hp > caster.maxHp * 0.5 && !caster.effects.guaranteed_hit && caster.inventory.includes("Felix Felicis (Dose)")) {
+            return this.executeItem(caster, "Felix Felicis (Dose)");
+        }
+        // Restore MP if below 15
+        if (caster.mp < 15 && caster.inventory.includes("Focus Draught")) {
+            return this.executeItem(caster, "Focus Draught");
         }
         return false; // No item was used
     },

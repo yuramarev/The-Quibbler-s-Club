@@ -789,7 +789,7 @@ animateParticles();
 // HOGWARTS TRACKER - REAL-TIME FIRESTORE EDITION
 // =================================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, signInAnonymously, linkWithCredential } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, getDoc, collection, getDocs, updateDoc, deleteField, addDoc, query, where, orderBy, Timestamp, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Firebase configuration
@@ -840,26 +840,59 @@ showLoginLink.addEventListener('click', (e) => {
     authError.textContent = '';
 });
 
-// Registration handler
+// Registration handler (UPDATED for Account Linking)
 registerForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = registerForm.email.value;
     const password = registerForm.password.value;
-    const passwordConfirm = registerForm.passwordConfirm.value; // Get confirmation password
+    const passwordConfirm = registerForm.passwordConfirm.value;
 
-    // Check if passwords match
     if (password !== passwordConfirm) {
         authError.textContent = "Passwords do not match.";
-        return; // Stop the function
+        return;
     }
     
-    authError.textContent = ''; // Clear previous errors
+    authError.textContent = '';
+    const currentUser = auth.currentUser;
 
-    createUserWithEmailAndPassword(auth, email, password)
-        .catch((error) => {
-            authError.textContent = error.message;
-            console.error('Registration error:', error);
-        });
+    // ПРОВЕРКА: Если пользователь уже вошел как Гость -> СВЯЗЫВАЕМ аккаунт
+    if (currentUser && currentUser.isAnonymous) {
+        const credential = EmailAuthProvider.credential(email, password);
+        
+        linkWithCredential(currentUser, credential)
+            .then((usercred) => {
+                const user = usercred.user;
+                console.log("Guest account successfully upgraded to", user.email);
+                // UID остался тем же! Словарь сохранен.
+                
+                // Возвращаемся в приложение
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'block';
+                
+                // Сбрасываем флаг и обновляем интерфейс
+                isSwitchingAccount = false;
+                App.updateUserDisplay();
+                App.showNotification("Account registered! Your dictionary is safe.", "success");
+            })
+            .catch((error) => {
+                console.error("Link error:", error);
+                if (error.code === 'auth/credential-already-in-use') {
+                    authError.textContent = "This email is already linked to another account.";
+                } else {
+                    authError.textContent = error.message;
+                }
+            });
+    } else {
+        // Если это была "чистая" регистрация (пользователя не было)
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(() => {
+                // onAuthStateChanged сам переключит экран
+            })
+            .catch((error) => {
+                authError.textContent = error.message;
+                console.error('Registration error:', error);
+            });
+    }
 });
 
 // Login handler
@@ -885,15 +918,23 @@ logoutBtn.addEventListener('click', () => {
 const guestReturnBtn = document.getElementById('guest-return-btn');
 if (guestReturnBtn) {
     guestReturnBtn.addEventListener('click', () => {
-        // Важно: Сбрасываем флаг, чтобы onAuthStateChanged не блокировал вход
         isSwitchingAccount = false; 
         
-        console.log("User chose to return as guest.");
+        const user = auth.currentUser;
         
-        signInAnonymously(auth).catch((error) => {
-            console.error("Guest login failed:", error);
-            authError.textContent = "Could not sign in as guest. Please try again.";
-        });
+        // Если пользователь уже есть (мы просто скрыли игру), просто показываем её обратно
+        if (user) {
+            console.log("Returning to existing session...");
+            authContainer.style.display = 'none';
+            appContainer.style.display = 'block';
+        } else {
+            // Если пользователя реально нет, создаем нового гостя
+            console.log("User chose to enter as guest (new session).");
+            signInAnonymously(auth).catch((error) => {
+                console.error("Guest login failed:", error);
+                authError.textContent = "Could not sign in as guest. Please try again.";
+            });
+        }
     });
 }
 
@@ -1057,11 +1098,14 @@ const App = {
     bindEventListeners() {
         if (this.eventsBound) return;
         
+        // --- КНОПКИ ГЛАВНОГО МЕНЮ И УПРАВЛЕНИЯ ---
         document.getElementById('award-points-btn').addEventListener('click', () => this.openAwardPointsDialog());
         document.getElementById('award-achievement-btn').addEventListener('click', () => this.openAwardAchievementDialog());
+        // Игры теперь через Хаб, но оставим прямые ссылки, если они есть в HTML
         document.getElementById('quidditch-btn').addEventListener('click', () => Quidditch.openGame());
         document.getElementById('duels-btn').addEventListener('click', () => DuelingClub.openDuelSetup());
         document.getElementById('hp1-adventure-btn').addEventListener('click', () => TextAdventure.open());     
+        
         document.getElementById('potion-requests-btn').addEventListener('click', () => this.openPurchaseRequestsDialog());
         document.getElementById('assign-houses-btn').addEventListener('click', () => this.openSortGroupDialog());
         document.getElementById('manage-groups-btn').addEventListener('click', () => this.openManageGroupsDialog());
@@ -1070,20 +1114,25 @@ const App = {
         document.getElementById('edit-students-btn').addEventListener('click', () => this.openEditStudentsDialog());
         document.getElementById('link-accounts-btn').addEventListener('click', () => this.openLinkAccountsDialog());
         document.getElementById('history-log-btn').addEventListener('click', () => this.showHistoryLog());
-        castSpellBtn.addEventListener('click', () => this.broadcastSpellEffect());
-        // Note: Direct listeners for dueling, quidditch, etc., are removed as they are now in the Games Hub.
+        
+        const castBtn = document.getElementById('cast-spell-btn');
+        if(castBtn) castBtn.addEventListener('click', () => this.broadcastSpellEffect());
+        
         document.getElementById('magic-shop-btn').addEventListener('click', () => Shop.open());
         document.getElementById('library-btn').addEventListener('click', () => Library.openLibrary());
         document.getElementById('dictionary-btn').addEventListener('click', () => Dictionary.openDictionary());
         document.getElementById('dictionary-training-btn').addEventListener('click', () => DictionaryTraining.openHub());
         document.getElementById('questions-btn').addEventListener('click', () => DiscussionQuestions.open());
-        document.getElementById('change-password-btn').addEventListener('click', () => this.openChangePasswordDialog());
+        
+        const pwdBtn = document.getElementById('change-password-btn');
+        if(pwdBtn) pwdBtn.addEventListener('click', () => this.openChangePasswordDialog());
+        
         document.getElementById('mute-btn').addEventListener('click', () => {
             this.isMuted = !this.isMuted;
             this.updateMuteButton();
         });
         
-        // Event delegation for student groups container
+        // Делегирование событий для кнопок профиля в списке студентов
         document.getElementById('student-groups-container').addEventListener('click', (e) => {
             if (e.target.matches('.profile-btn')) {
                 const studentName = e.target.dataset.studentName;
@@ -1091,29 +1140,60 @@ const App = {
             }
         });
 
-        // Global listener for Escape key
+        // --- ЛОГИКА КЛАВИШИ ESCAPE (СЛОИ) ---
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
-                 if (document.getElementById('training-game-modal').classList.contains('show')) {
+                
+                // СЛОЙ 1: Всплывающие окна поверх всего (самый высокий приоритет)
+                // Если открыт перевод слова -> Закрываем его и СТОП.
+                if (document.getElementById('definition-popup-modal').classList.contains('show')) {
+                    document.getElementById('definition-popup-modal').classList.remove('show');
+                    return; 
+                }
+
+                // Если открыто окно лимита гостя -> Закрываем его и СТОП.
+                const limitModal = document.getElementById('guest-limit-modal');
+                if (limitModal && limitModal.classList.contains('show')) {
+                    limitModal.classList.remove('show');
+                    return;
+                }
+
+                // СЛОЙ 2: Активные игровые режимы
+                if (document.getElementById('training-game-modal').classList.contains('show')) {
                     DictionaryTraining.closeGame();
+                    return;
+                }
+                
+                if (document.getElementById('text-adventure-modal').classList.contains('show')) { 
+                    TextAdventure.close();
+                    return;
+                }
+
+                // СЛОЙ 3: Режим чтения (Пергамент на весь экран)
+                // При выходе возвращаемся в обычное окно книги.
+                if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
+                    Library.exitReadingMode(); 
+                    return;
+                }
+
+                // СЛОЙ 4: Обычное окно книги (Reader Modal)
+                // При закрытии возвращаемся на ГЛАВНУЮ (минуя библиотеку).
+                if (document.getElementById('reader-modal').classList.contains('show')) {
+                    Library.closeReader();
+                    return;
+                }
+
+                // СЛОЙ 5: Все остальные модальные окна (Библиотека, Словарь, Магазин и т.д.)
+                if (document.getElementById('quidditch-modal').classList.contains('show')) {
+                    Quidditch.closeGame();
+                } else if (document.getElementById('duel-modal').classList.contains('show')) { 
+                    DuelingClub.closeDuelModal();
+                } else if (document.getElementById('games-hub-modal').classList.contains('show')) { 
+                    document.getElementById('games-hub-modal').classList.remove('show');
                 } else if (document.getElementById('dictionary-training-modal').classList.contains('show')) {
                     document.getElementById('dictionary-training-modal').classList.remove('show');
                 } else if (document.getElementById('questions-modal').classList.contains('show')) {
                     DiscussionQuestions.close();
-                } else if (document.getElementById('text-adventure-modal').classList.contains('show')) { // Added for Text Adventure
-                    TextAdventure.close();
-                } else if (document.getElementById('quidditch-modal').classList.contains('show')) {
-                    Quidditch.closeGame();
-                } else if (document.getElementById('duel-modal').classList.contains('show')) { // Moved for better grouping
-                    DuelingClub.closeDuelModal();
-                } else if (document.getElementById('games-hub-modal').classList.contains('show')) { // Added for Games Hub
-                    document.getElementById('games-hub-modal').classList.remove('show');
-                } else if (document.getElementById('reading-mode-container').classList.contains('reading-mode-active')) {
-                    Library.exitReadingMode();
-                } else if (document.getElementById('reader-modal').classList.contains('show')) {
-                    Library.closeReader();
-                } else if (document.getElementById('definition-popup-modal').classList.contains('show')) {
-                    document.getElementById('definition-popup-modal').classList.remove('show');
                 } else if (document.getElementById('dictionary-modal').classList.contains('show')) {
                     Dictionary.closeDictionary();
                 } else if (document.getElementById('library-modal').classList.contains('show')) {
@@ -1408,48 +1488,49 @@ const App = {
     },
 
     openRegisterModal() {
-        const confirmRegister = confirm("To login or register, your current guest session will be closed. Continue?");
-        if (confirmRegister) {
-            // Ставим флаг, что это намеренный выход (чтобы не сработал авто-вход гостя)
-            isSwitchingAccount = true;
+        // 1. Ставим флаг переключения (не выходим из системы, сохраняем UID гостя)
+        isSwitchingAccount = true;
 
-            // === UI CLEANUP: Закрываем всё лишнее перед выходом ===
-            
-            // 1. Закрываем все модальные окна (Словарь, Лимит, Книги и т.д.)
-            document.querySelectorAll('.modal-backdrop').forEach(modal => {
-                modal.classList.remove('show');
-            });
+        // === UI CLEANUP: Закрываем все окна ===
+        const modals = document.querySelectorAll('.modal-backdrop');
+        modals.forEach(modal => modal.classList.remove('show'));
 
-            // 2. Закрываем режим чтения (если он активен)
-            const readingMode = document.getElementById('reading-mode-container');
-            if (readingMode) {
-                readingMode.classList.add('hidden');
-                readingMode.classList.remove('reading-mode-active');
-            }
+        const limitModal = document.getElementById('guest-limit-modal');
+        if(limitModal) limitModal.classList.remove('show');
 
-            // 3. Удаляем визуальные эффекты заклинаний (если есть)
-            document.getElementById('spell-effect-container').innerHTML = '';
-
-            // =======================================================
-
-            // Разлогиниваемся и показываем экран входа
-            signOut(auth).then(() => {
-                document.getElementById('auth-container').style.display = 'flex';
-                document.getElementById('app-container').style.display = 'none';
-                
-                // Сбрасываем формы
-                document.getElementById('login-form').reset();
-                document.getElementById('register-form').reset();
-                
-                // Переключаем сразу на вкладку Логина (или Регистрации, если хотите)
-                document.getElementById('login-form').style.display = 'block';
-                document.getElementById('register-form').style.display = 'none';
-                document.getElementById('show-register').style.display = 'inline';
-                document.getElementById('show-login').style.display = 'none';
-                
-                document.getElementById('auth-error').textContent = '';
-            });
+        const readingMode = document.getElementById('reading-mode-container');
+        if (readingMode) {
+            readingMode.classList.add('hidden');
+            readingMode.classList.remove('reading-mode-active');
         }
+
+        const spellContainer = document.getElementById('spell-effect-container');
+        if(spellContainer) spellContainer.innerHTML = '';
+        // ======================================
+
+        // 2. Переключаем видимость контейнеров
+        document.getElementById('app-container').style.display = 'none';
+        
+        const authContainer = document.getElementById('auth-container');
+        authContainer.style.display = 'flex';
+        authContainer.style.zIndex = "10000"; 
+        authContainer.style.position = "relative";
+
+        window.scrollTo(0, 0);
+
+        // 3. Настраиваем формы
+        document.getElementById('login-form').reset();
+        document.getElementById('register-form').reset();
+        
+        // === ИЗМЕНЕНИЕ ЗДЕСЬ: Показываем LOGIN, прячем REGISTER ===
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('register-form').style.display = 'none';
+        
+        // Ссылки переключения
+        document.getElementById('show-register').style.display = 'inline';
+        document.getElementById('show-login').style.display = 'none';
+        
+        document.getElementById('auth-error').textContent = '';
     },
     
     // ==== MODALS AND DIALOGS ====
@@ -3176,9 +3257,15 @@ const Library = {
     },
 
     closeReader() {
+        // 1. Закрываем окно с текстом книги
         const readerModal = document.getElementById('reader-modal');
-        readerModal.classList.remove('show');
-        this.openLibrary();
+        if (readerModal) readerModal.classList.remove('show');
+        
+        // 2. Закрываем окно библиотеки (чтобы не возвращаться к списку книг)
+        const libraryModal = document.getElementById('library-modal');
+        if (libraryModal) libraryModal.classList.remove('show');
+
+        // Теперь пользователь оказывается сразу на главной странице
     },
 
     async loadChapter(bookId, chapterId) {
@@ -3298,20 +3385,22 @@ const Library = {
     },
 
     exitReadingMode() {
+        // 1. Скрываем "Режим чтения" (на весь экран)
         const readingModeContainer = document.getElementById('reading-mode-container');
-        if (!readingModeContainer) return;
-
-        readingModeContainer.classList.add('hidden');
-        readingModeContainer.classList.remove('reading-mode-active');
-        
-        // Re-open the book in the standard modal view
-        if (this.currentBookId) {
-            this.openBook(this.currentBookId).then(() => {
-                if (this.currentChapterId) {
-                    this.loadChapter(this.currentBookId, this.currentChapterId);
-                }
-            });
+        if (readingModeContainer) {
+            readingModeContainer.classList.add('hidden');
+            readingModeContainer.classList.remove('reading-mode-active');
         }
+
+        // 2. Показываем обратно обычное окно книги (Reader Modal)
+        const readerModal = document.getElementById('reader-modal');
+        if (readerModal) {
+            readerModal.classList.add('show');
+        }
+        
+        // Примечание: Мы не закрываем library-modal, так как reader-modal 
+        // открывается поверх него. Если вы закроете reader-modal, 
+        // под ним останется библиотека. Это стандартное поведение "назад".
     },
     
     toggleEditMode(button, type, id1, id2 = null) {

@@ -552,6 +552,10 @@
                 <a href="#" id="show-register" class="text-sm text-[#FFD700] hover:underline">No account? Register here</a>
                 <a href="#" id="show-login" class="text-sm text-[#FFD700] hover:underline" style="display: none;">Already have an account? Login</a>
             </div>
+            <div class="mt-6 border-t border-gray-600 pt-4">
+                <p class="text-gray-400 text-xs text-center mb-2">Just looking around?</p>
+                <button id="guest-return-btn" class="btn bg-gray-600 hover:bg-gray-500 text-white w-full">Continue as Guest</button>
+            </div>
         </div>
     </div>
 
@@ -576,7 +580,7 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center items-center">
-                 <div class="text-sm text-gray-300">
+                 <div id="header-user-info" class="text-sm text-gray-300 flex items-center">
                     User: <span id="user-display" class="font-bold text-white"></span>
                     <button id="change-password-btn" class="ml-2 text-xs text-[#FFD700] hover:underline focus:outline-none">(change password)</button>
                  </div>
@@ -685,6 +689,20 @@
     <div id="games-hub-modal" class="modal-backdrop">
         <div id="games-hub-content" class="modal-content"></div>
     </div>
+    <!-- Guest Limit Modal -->
+    <div id="guest-limit-modal" class="modal-backdrop" style="z-index: 4000;">
+        <div class="modal-content !max-w-md text-center">
+            <span class="modal-close-btn" onclick="document.getElementById('guest-limit-modal').classList.remove('show')">&times;</span>
+            <div class="text-6xl mb-4">🔒</div>
+            <h3 class="font-magic-header text-2xl text-[#FFD700] mb-4">Registration Required</h3>
+            <p class="text-gray-300 mb-6">
+                You have reached the limit of 5 words for guest users. 
+                To save more words and keep your progress safe, please register an account.
+            </p>
+            <button class="btn btn-gold w-full text-lg" onclick="App.openRegisterModal()">Register Now</button>
+            <button class="btn bg-transparent text-gray-400 hover:text-white mt-4 text-sm" onclick="document.getElementById('guest-limit-modal').classList.remove('show')">Maybe later</button>
+        </div>
+    </div>
     
     <!-- Reading Mode Container -->
     <div id="reading-mode-container" class="reading-mode hidden">
@@ -771,7 +789,7 @@ animateParticles();
 // HOGWARTS TRACKER - REAL-TIME FIRESTORE EDITION
 // =================================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, getDoc, collection, getDocs, updateDoc, deleteField, addDoc, query, where, orderBy, Timestamp, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Firebase configuration
@@ -801,6 +819,7 @@ const authError = document.getElementById('auth-error');
 const logoutBtn = document.getElementById('logout-btn');
 const userDisplay = document.getElementById('user-display');
 const castSpellBtn = document.getElementById('cast-spell-btn');
+let isSwitchingAccount = false;
 
 // Switch between login and registration forms
 showRegisterLink.addEventListener('click', (e) => {
@@ -862,26 +881,55 @@ logoutBtn.addEventListener('click', () => {
     });
 });
 
+// Guest Return Handler
+const guestReturnBtn = document.getElementById('guest-return-btn');
+if (guestReturnBtn) {
+    guestReturnBtn.addEventListener('click', () => {
+        // Важно: Сбрасываем флаг, чтобы onAuthStateChanged не блокировал вход
+        isSwitchingAccount = false; 
+        
+        console.log("User chose to return as guest.");
+        
+        signInAnonymously(auth).catch((error) => {
+            console.error("Guest login failed:", error);
+            authError.textContent = "Could not sign in as guest. Please try again.";
+        });
+    });
+}
+
 // Authentication state listener
 onAuthStateChanged(auth, (user) => {
     if (user) {
         // User is logged in
         authContainer.style.display = 'none';
         appContainer.style.display = 'block';
-        userDisplay.textContent = user.email;
-        
-        // Initialize the main application logic
         App.init(user.uid, db);
     } else {
-        // User is logged out
-        authContainer.style.display = 'flex';
-        appContainer.style.display = 'none';
-        userDisplay.textContent = '';
-        if (App.unsubscribeMain) App.unsubscribeMain();
-        if (App.unsubscribeSpells) App.unsubscribeSpells();
-        if (App.unsubscribeRequests) App.unsubscribeRequests();
-        App.userId = null;
-        App.currentPlayerName = null;
+        // === CLEANUP ===
+        if (typeof App !== 'undefined') {
+            if (App.unsubscribeMain) { App.unsubscribeMain(); App.unsubscribeMain = null; }
+            if (App.unsubscribeSpells) { App.unsubscribeSpells(); App.unsubscribeSpells = null; }
+            if (App.unsubscribeRequests) { App.unsubscribeRequests(); App.unsubscribeRequests = null; }
+        }
+
+        // === ПРОВЕРКА: Это специальный выход? ===
+        if (isSwitchingAccount) {
+            // Если мы нажали "Login / Register", мы НЕ входим как гость автоматически.
+            console.log("Intentional logout for registration/login.");
+            authContainer.style.display = 'flex';
+            appContainer.style.display = 'none';
+            
+            // Сбрасываем флаг обратно, чтобы при следующей перезагрузке страницы гость снова работал
+            isSwitchingAccount = false; 
+        } else {
+            // Если это просто первый заход на сайт -> Впускаем Гостя
+            console.log("No user found, signing in anonymously...");
+            signInAnonymously(auth).catch((error) => {
+                console.error("Guest login failed:", error);
+                authContainer.style.display = 'flex';
+                appContainer.style.display = 'none';
+            });
+        }
     }
 });
 
@@ -1313,21 +1361,94 @@ const App = {
     
     updateUserDisplay() {
         const user = auth.currentUser;
-        if (user) {
-            let displayText = user.email;
-            if (this.currentPlayerName) {
-                displayText += ` (as ${this.currentPlayerName})`;
-                castSpellBtn.disabled = false;
-                castSpellBtn.title = "Cast a spell for everyone to see!";
-            } else if (!this.isAdmin) {
-                displayText += ` (Spectator)`;
-                castSpellBtn.disabled = true;
-                castSpellBtn.title = "Link your account to a student to cast spells.";
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoContainer = document.getElementById('header-user-info'); // Ищем по новому ID
+        
+        if (user && userInfoContainer) {
+            
+            if (user.isAnonymous) {
+                // === РЕЖИМ ГОСТЯ ===
+                
+                // 1. Скрываем кнопку Logout (она не нужна, так как есть Login/Register)
+                if(logoutBtn) logoutBtn.style.display = 'none';
+
+                // 2. Рисуем шапку для гостя: Имя + Кнопка входа
+                userInfoContainer.innerHTML = `
+                    <span class="mr-2">User: <span class="font-bold text-white">Guest Wizard</span></span>
+                    <button onclick="App.openRegisterModal()" class="btn btn-gold text-xs animate-pulse" style="padding: 2px 8px;">Login / Register</button>
+                `;
+
             } else {
-                 castSpellBtn.disabled = false;
-                 castSpellBtn.title = "Admins can cast shared spells.";
+                // === РЕЖИМ ПОЛЬЗОВАТЕЛЯ ===
+
+                // 1. Показываем кнопку Logout
+                if(logoutBtn) logoutBtn.style.display = 'inline-block';
+
+                // 2. Формируем имя
+                let displayText = user.email;
+                if (this.currentPlayerName) {
+                    displayText += ` (as ${this.currentPlayerName})`;
+                    if(castSpellBtn) castSpellBtn.disabled = false;
+                } else if (!this.isAdmin) {
+                    displayText += ` (Spectator)`;
+                    if(castSpellBtn) castSpellBtn.disabled = true;
+                }
+
+                // 3. Рисуем шапку: Имя + Смена пароля
+                userInfoContainer.innerHTML = `
+                    <span class="mr-2">User: <span class="font-bold text-white">${displayText}</span></span>
+                    <button id="change-password-btn" class="text-xs text-[#FFD700] hover:underline focus:outline-none">(change password)</button>
+                `;
+
+                // 4. Вешаем событие на кнопку смены пароля (так как мы создали её заново)
+                const pwdBtn = document.getElementById('change-password-btn');
+                if(pwdBtn) pwdBtn.addEventListener('click', () => this.openChangePasswordDialog());
             }
-            userDisplay.textContent = displayText;
+        }
+    },
+
+    openRegisterModal() {
+        const confirmRegister = confirm("To login or register, your current guest session will be closed. Continue?");
+        if (confirmRegister) {
+            // Ставим флаг, что это намеренный выход (чтобы не сработал авто-вход гостя)
+            isSwitchingAccount = true;
+
+            // === UI CLEANUP: Закрываем всё лишнее перед выходом ===
+            
+            // 1. Закрываем все модальные окна (Словарь, Лимит, Книги и т.д.)
+            document.querySelectorAll('.modal-backdrop').forEach(modal => {
+                modal.classList.remove('show');
+            });
+
+            // 2. Закрываем режим чтения (если он активен)
+            const readingMode = document.getElementById('reading-mode-container');
+            if (readingMode) {
+                readingMode.classList.add('hidden');
+                readingMode.classList.remove('reading-mode-active');
+            }
+
+            // 3. Удаляем визуальные эффекты заклинаний (если есть)
+            document.getElementById('spell-effect-container').innerHTML = '';
+
+            // =======================================================
+
+            // Разлогиниваемся и показываем экран входа
+            signOut(auth).then(() => {
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+                
+                // Сбрасываем формы
+                document.getElementById('login-form').reset();
+                document.getElementById('register-form').reset();
+                
+                // Переключаем сразу на вкладку Логина (или Регистрации, если хотите)
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('register-form').style.display = 'none';
+                document.getElementById('show-register').style.display = 'inline';
+                document.getElementById('show-login').style.display = 'none';
+                
+                document.getElementById('auth-error').textContent = '';
+            });
         }
     },
     
@@ -2004,6 +2125,14 @@ const App = {
     },
 
     async broadcastSpellEffect() {
+        // --- GUEST CHECK ---
+        const user = auth.currentUser;
+        if (user && user.isAnonymous) {
+             this.showNotification("Guest wizards cannot cast shared spells yet.", "error");
+             return;
+        }
+        // -------------------
+        
         const casterName = this.isAdmin ? "The Headmaster" : this.currentPlayerName;
         if (!casterName) {
             this.showNotification("Only linked students can cast shared spells.", "error");
@@ -2493,6 +2622,14 @@ const DiscussionQuestions = {
     },
 
     async saveAnswer(chapterId, houseName, questionIndex) {
+        // --- GUEST CHECK ---
+        const user = auth.currentUser;
+        if (user && user.isAnonymous) {
+             this.app.showNotification("Guests cannot submit homework. Please register to earn points.", "error");
+             return;
+        }
+        // -------------------
+
         const textarea = document.getElementById(`answer-${chapterId}-${houseName}-${questionIndex}`);
         const answerText = textarea.value.trim();
         if (!answerText) {
@@ -2819,6 +2956,18 @@ const Dictionary = {
 
     async saveWord(word, definition) {
         if (!this.app.userId) return;
+        const user = auth.currentUser;
+        if (user && user.isAnonymous) {
+            const currentCount = Object.keys(this.userWords).length;
+            if (currentCount >= 5) {
+                // Limit reached! Show modal and stop.
+                document.getElementById('definition-popup-modal').classList.remove('show');
+                document.getElementById('guest-limit-modal').classList.add('show');
+                return;
+            }
+        }
+        // -----------------------------
+
         const cleanedWord = word.toLowerCase();
 
         if (this.userWords[cleanedWord]) {
@@ -3235,6 +3384,14 @@ const Shop = {
     app: null,
 
     open() {
+        // --- GUEST CHECK ---
+        const user = auth.currentUser;
+        if (user && user.isAnonymous) {
+             this.app.showNotification("Guests cannot access the Magic Shop. Please register.", "error");
+             return;
+        }
+        // -------------------
+
         const studentName = this.app.currentPlayerName;
         if (!studentName) {
              this.app.showNotification("You must be linked to a student profile to shop. An admin can link your account.", "error");

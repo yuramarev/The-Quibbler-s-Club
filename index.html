@@ -703,6 +703,28 @@
             <button class="btn bg-transparent text-gray-400 hover:text-white mt-4 text-sm" onclick="document.getElementById('guest-limit-modal').classList.remove('show')">Maybe later</button>
         </div>
     </div>
+    <div id="welcome-modal" class="modal-backdrop" style="z-index: 5000;">
+        <div class="modal-content !max-w-2xl text-center border-2 border-[#FFD700]">
+            
+            <div class="relative inline-block mb-6 mt-4">
+                <img src="https://i.postimg.cc/nHdg6MQw/unnamed-(10).jpg" alt="Yura Marev" class="w-40 h-40 rounded-full border-4 border-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.5)] object-cover">
+            </div>
+
+            <h3 class="font-magic-header text-3xl text-[#FFD700] mb-6">Welcome to The Quibbler's Club!</h3>
+            
+            <div class="text-left text-gray-200 space-y-4 text-base leading-relaxed px-4">
+                <p>Привет! Я <strong>Юра</strong> - англо-русский билингв, преподаватель, программист и Поттероман 80-го уровня 😀</p>
+                <p>Жил в США, но истинная любовь к Великобритании и Хогвартсу всегда была сильнее.</p>
+                <p>Я сделал этот сайт для таких же фанатов, как мы: здесь можно читать книгу, вести словарик и тренировать слова разными способами, учить английский в игровых форматах. Вас ждут Квиддич, дуэльный клуб с элементами D&D и моя собственная текстовая игра по первой части, вдохновлённая классикой жанра - Zork!</p>
+                <p class="italic text-[#FFD700]">Это всё бесплатно, от чистого сердца фаната 💚</p>
+                <div class="bg-[#0C1C33] p-4 rounded-lg border border-[#3D5568] mt-4">
+                    <p class="mb-0">Я также запустил читательский клуб и курс английского по Гарри Поттеру - подробности в telegram <a href="https://t.me/yuramarev" target="_blank" class="font-bold text-[#FFD700] hover:underline hover:text-white transition-colors">@yuramarev</a> 🦉</p>
+                </div>
+            </div>
+
+            <button class="btn btn-gold w-full mt-8 text-xl font-magic-header py-3" onclick="App.closeWelcomeModal()">Шалость удалась! ✨</button>
+        </div>
+    </div>
     
     <!-- Reading Mode Container -->
     <div id="reading-mode-container" class="reading-mode hidden">
@@ -1092,6 +1114,8 @@ const App = {
         DictionaryTraining.app = this;
 
         TextAdventure.app = this;
+
+        setTimeout(() => this.showWelcomeModal(), 1000);
     },
 
     // ==== EVENT BINDING ====
@@ -1143,6 +1167,12 @@ const App = {
         // --- ЛОГИКА КЛАВИШИ ESCAPE (СЛОИ) ---
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
+                
+                // СЛОЙ 0: Приветственное окно (самый высокий приоритет)
+                if (document.getElementById('welcome-modal') && document.getElementById('welcome-modal').classList.contains('show')) {
+                    App.closeWelcomeModal();
+                    return;
+                }
                 
                 // СЛОЙ 1: Всплывающие окна поверх всего (самый высокий приоритет)
                 // Если открыт перевод слова -> Закрываем его и СТОП.
@@ -1531,6 +1561,24 @@ const App = {
         document.getElementById('show-login').style.display = 'none';
         
         document.getElementById('auth-error').textContent = '';
+    },
+
+    // ==== WELCOME MODAL ====
+    showWelcomeModal() {
+        // Проверяем, показывали ли уже приветствие в этой сессии (опционально)
+        // Если хочешь показывать каждый раз при обновлении страницы, удали строку с localStorage
+        if (!sessionStorage.getItem('welcomeShown_v1')) {
+            const modal = document.getElementById('welcome-modal');
+            if (modal) {
+                modal.classList.add('show');
+                // Мы сохраняем флаг, чтобы не надоедать пользователю (убери эту строку, если хочешь показывать всегда)
+                localStorage.setItem('welcomeShown_v1', 'true');
+            }
+        }
+    },
+
+    closeWelcomeModal() {
+        document.getElementById('welcome-modal').classList.remove('show');
     },
     
     // ==== MODALS AND DIALOGS ====
